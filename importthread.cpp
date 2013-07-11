@@ -21,7 +21,7 @@ void importThread::_importClients()
 
     emit Progress(tr("Abriendo Archivo: Clientes"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Clientes.dbf";
+    QString file = Path()+"/Clientes.dbf";
      _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -159,7 +159,7 @@ void importThread::_importClients()
          "comentario_bloqueo, porc_dto_cliente, recargo_equivalencia, cuenta_contable, cuenta_iva_repercutido,"
          "cuenta_deudas, cuenta_cobros, id_forma_pago, dia_pago1, dia_pago2, tarifa_cliente, importe_a_cuenta,"
          "vales, entidad_bancaria, oficina_bancaria, dc, cuenta_corriente,"
-         "importe_pendiente) "
+         "importe_pendiente,acceso_web,password_web,observaciones) "
          "VALUES "
          "(:cCodigoCliente, :cApellido1, :cApellido2, :cNombre, :cNombreFiscal, :cNombreComercial,"
          ":cPersonaContacto, :cCifNif, :cDireccion1, :cDireccion2, :cCP, :cPoblacion, :cProvincia,"
@@ -168,21 +168,21 @@ void importThread::_importClients()
          ":tComentarioBloqueo, :nPorcDtoCliente, :lRecargoEquivalencia, :cCuentaContable, :cCuentaIvaRepercutido,"
          ":cCuentaDeudas, :cCuentaCobros, :idFormaPago, :nDiapago1, :nDiaPago2, :nTarifaCliente, :rImporteACuenta,"
          ":rVales, :cCentidadBancaria, :cOficinaBancaria, :cDC, :cCuentaCorriente,"
-         ":rImportePendiente);" );
+         ":rImportePendiente,:acceso_web,:password_web,:observaciones);" );
 
-        wq.bindValue(":cCodigoCliente",r.value("CCODCLI").toString().trimmed());
-        wq.bindValue(":cApellido1",apell1);
-        wq.bindValue(":cApellido2",apell2);
-        wq.bindValue(":cNombre",name);
-        wq.bindValue(":cNombreFiscal",r.value("CNOMCLI").toString().trimmed());
+        wq.bindValue(":cCodigoCliente",r.value("CSUBCTA").toString().trimmed().toUpper());
+        wq.bindValue(":cApellido1",apell1.trimmed().toUpper());
+        wq.bindValue(":cApellido2",apell2.trimmed().toUpper());
+        wq.bindValue(":cNombre",name.toUpper());
+        wq.bindValue(":cNombreFiscal",r.value("CNOMCLI").toString().trimmed().toUpper());
         wq.bindValue(":cNombreComercial",r.value("CNOMCOM").toString().trimmed());
         wq.bindValue(":cPersonaContacto",r.value("CCONTACTO").toString().trimmed());
         wq.bindValue(":cCifNif",r.value("CDNICIF").toString().trimmed());
         wq.bindValue(":cDireccion1",r.value("CDIRCLI").toString().trimmed());
         wq.bindValue(":cDireccion2","");
         wq.bindValue(":cCP",r.value("CPTLCLI").toString().trimmed());
-        wq.bindValue(":cPoblacion",r.value("CPOBCLI").toString().trimmed());
-        wq.bindValue(":cProvincia",r.value("CCODPROV").toString().trimmed());
+        wq.bindValue(":cPoblacion",r.value("CPOBCLI").toString().trimmed().toUpper());
+        wq.bindValue(":cProvincia",r.value("CCODPROV").toString().trimmed()); // TODO hay que poner el nombre, no el código.
         wq.bindValue(":idpais",-1);//TODO id_pais
         wq.bindValue(":cTelefono1",r.value("CTFO1CLI").toString().trimmed());
         wq.bindValue(":cTelefono2",r.value("CTFO2CLI").toString().trimmed());
@@ -201,6 +201,7 @@ void importThread::_importClients()
         com.append("\n");
         com.append(_cCliente.value(r.value("CCODCLI").toString().trimmed()));
         wq.bindValue(":tComentarios",com);
+        wq.bindValue(":observaciones",r.value("COBSCLI").toString().trimmed());
 
         wq.bindValue(":lBloqueado",r.value("LBLOQUEADO").toUInt());
         wq.bindValue(":tComentarioBloqueo",r.value("CDESCBLOQU").toString().trimmed());
@@ -226,6 +227,8 @@ void importThread::_importClients()
         wq.bindValue(":cCuentaCorriente",cc);
         //wq.bindValue(":dFechaNacimiento","");
         wq.bindValue(":rImportePendiente",0);
+        wq.bindValue(":acceso_web",r.value("CSUBCTA").toString().trimmed().toUpper());
+        wq.bindValue(":password_web",r.value("CDNICIF").toString().trimmed().toUpper());
 
         if(!wq.exec())
         {
@@ -244,7 +247,7 @@ void importThread::_importComenCli()
 {
     emit Progress(tr("Abriendo Archivo: Notas de clientes"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Clientec.dbf";
+    QString file = Path()+"/Clientec.dbf";
      _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -296,7 +299,7 @@ void importThread::_importFormPago()
 {
     emit Progress(tr("Abriendo Archivo: Formas de pago"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Fpago.dbf";
+    QString file = Path()+"/Fpago.dbf";
     _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -396,7 +399,7 @@ void importThread::_importProv()
 {
     emit Progress(tr("Abriendo Archivo: Proveedores"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Proveedo.dbf";
+    QString file = Path()+"/Proveedo.dbf";
     _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -560,7 +563,7 @@ void importThread::_importComentProv()
 {
     emit Progress(tr("Abriendo Archivo: Comentarios de proveedor"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Proveedc.dbf";
+    QString file = Path()+"/Proveedc.dbf";
     _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -612,7 +615,7 @@ void importThread::_importFamilias()
 {
     emit Progress(tr("Abriendo Archivo: Familias"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Familias.dbf";
+    QString file = Path()+"/Familias.dbf";
      _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -672,7 +675,7 @@ void importThread::_importComentArticulos1()
 {
     emit Progress(tr("Abriendo Archivo: Comentarios de Articulos"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Artcom.dbf";
+    QString file = Path()+"/Artcom.dbf";
     _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -724,7 +727,7 @@ void importThread::_importComentArticulos2()
 {
     emit Progress(tr("Abriendo Archivo: Comentarios de Articulos"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Articulc.dbf";
+    QString file = Path()+"/Articulc.dbf";
     _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -776,7 +779,7 @@ void importThread::_importStocks()
 {
     emit Progress(tr("Abriendo Archivo: Stocks de Articulos"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Stocks.dbf";
+    QString file = Path()+"/Stocks.dbf";
     _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -882,7 +885,7 @@ void importThread::_importArticulos()
 
     emit Progress(tr("Abriendo Archivo: Articulos"),0);
     emit sizeOfTask(0);
-    QString file = Path()+"\\Articulo.dbf";
+    QString file = Path()+"/Articulo.dbf";
      _mw->openDb(file);
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
@@ -1004,12 +1007,12 @@ void importThread::_importArticulos()
          "(`codigo`, `codigo_barras`, `codigo_fabricante`, `descripcion`,"
          "`descripcion_reducida`, `id_proveedor`, `id_familia`, `tipo_iva`,"
          "`coste`, `comentario`, `stock_maximo`, `stock_minimo`, `stock_real`,"
-         "`tipo_unidad`, `controlar_stock`, `pvp_incluye_iva`, `etiquetas`, `id_tipos_iva`)"
+                    "`tipo_unidad`, `controlar_stock`, `pvp_incluye_iva`, `etiquetas`, `id_tipos_iva`, `coste_real`)"
          "VALUES "
          "(:codigo, :codigo_barras, :codigo_fabricante, :descripcion,"
          ":descripcion_reducida, :id_proveedor, :id_familia, :tipo_iva,"
          ":coste, :comentario, :stock_maximo, :stock_minimo, :stock_real,"
-         ":tipo_unidad, :controlar_stock, :pvp_incluye_iva, :etiquetas, :id_tipos_iva);"
+         ":tipo_unidad, :controlar_stock, :pvp_incluye_iva, :etiquetas, :id_tipos_iva,:coste_real);"
                     );
 
         QString ref = r.value("CREF").toString().trimmed();
@@ -1032,6 +1035,7 @@ void importThread::_importArticulos()
         wq.bindValue(":pvp_incluye_iva",0);
         wq.bindValue(":etiquetas",r.value("NETIQUETAS").toString().trimmed());
         wq.bindValue(":id_tipos_iva",_getIdIva(cod_iva));
+        wq.bindValue(":coste_real",r.value("NCOSTEDIV").toString().trimmed());
 
         if(!wq.exec())
         {
