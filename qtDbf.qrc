@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/" >
+    <qresource prefix="/">
         <file>images/add.svg</file>
         <file>images/delete.svg</file>
         <file>images/edit.svg</file>
@@ -29,5 +29,9 @@
         <file>help/help.png</file>
         <file>help/save.png</file>
         <file>images/colors.svg</file>
+        <file>DB/DBEmpresa.sql</file>
+        <file>DB/DBGrupo.sql</file>
+        <file>DB/poblaciones.sql</file>
+        <file>DB/divisas.txt</file>
     </qresource>
 </RCC>

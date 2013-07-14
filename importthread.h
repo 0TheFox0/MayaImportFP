@@ -15,6 +15,7 @@ class importThread : public QThread
     Q_PROPERTY(bool importFormPago READ importingFormPago WRITE importFormPago NOTIFY importFormPagoChanged)
     Q_PROPERTY(bool importProveedores READ importingProveedores WRITE importProveedores NOTIFY importProveedoresChanged)
     Q_PROPERTY(bool importArticulos READ importingArticulos WRITE importArticulos NOTIFY importArticulosChanged)
+    Q_PROPERTY(bool createNewGroup READ createNewGroup WRITE setcreateNewGroup NOTIFY createNewGroupChanged)
 public:
     explicit importThread(MainWindow * mw, QObject *parent = 0);
     ~importThread();
@@ -36,6 +37,11 @@ public:
     QHash<QString, int> divisas() const;
     void setDivisas(const QHash<QString, int> &divisas);
 
+    bool createNewGroup() const;
+
+    QHash<QString, int> ivaRelation() const;
+    void setIvaRelation(const QHash<QString, int> &ivaRelation);
+
 signals:
     
     void importClientesChanged(bool arg);
@@ -51,6 +57,8 @@ signals:
 
     void importArticulosChanged(bool arg);
 
+    void createNewGroupChanged(bool arg);
+
 public slots:
 
     void importClientes(bool arg);
@@ -64,6 +72,8 @@ public slots:
     void importProveedores(bool arg);
 
     void importArticulos(bool arg);
+
+    void setcreateNewGroup(bool arg);
 
 private:
     bool m_importClientes;
@@ -88,6 +98,10 @@ private:
     void _generarCodigosTarifa();
     void _importArticulos();
 
+    void _importPresCli();
+
+    QHash<QString,int> _articulos;// CREF,id
+    QHash<QString,QSqlRecord> _clientes;// CCODCLI,id
     QHash<QString,int> _fpago;
     QHash<QString,QString> _cCliente;
     QHash<QString,QString> _cArticulos;
@@ -95,6 +109,7 @@ private:
     QHash<QString,int> _prov;
     QHash<QString,int> _fams;
     QHash<QString,QSqlRecord> _ivas;
+    QHash<QString,int> _ivaRelation;
     QHash<QString,int> _divisas;
     QHash<QString,int> _codTarifa;
     bool _hardStop;
@@ -106,6 +121,7 @@ private:
     bool m_importProveedores;
     bool m_importArticulos;
     QString _ValidarCC(QString Entidad, QString Oficina, QString CC);
+    bool m_createNewGroup;
 };
 
 #endif // IMPORTTHREAD_H

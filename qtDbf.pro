@@ -13,7 +13,8 @@ HEADERS += src/structures.h \
     progressdialog.h \
     importthread.h \
     importdialog.h \
-    setdivisas.h
+    setdivisas.h \
+    groupcreator.h
 SOURCES += src/dbfeditor.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
@@ -25,7 +26,8 @@ SOURCES += src/dbfeditor.cpp \
     progressdialog.cpp \
     importthread.cpp \
     importdialog.cpp \
-    setdivisas.cpp
+    setdivisas.cpp \
+    groupcreator.cpp
 RESOURCES += qtDbf.qrc
 QT += sql \
     svg \

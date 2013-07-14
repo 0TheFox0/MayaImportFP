@@ -27,6 +27,7 @@ void progressDialog::Progress(QString message, int currentValue)
 
 void progressDialog::sizeOfTask(int max)
 {
+    ui->progressBar->setValue(0);
     ui->progressBar->setMaximum(max);
 }
 
