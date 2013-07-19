@@ -68,6 +68,7 @@ void importDialog::on_btnImportar_clicked()
 
             ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);
             ui->btnImportar->setText("Importar");
+            ui->btnImportar->setEnabled(true);
         }
         else
         {
