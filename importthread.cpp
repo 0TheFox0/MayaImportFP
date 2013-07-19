@@ -1926,7 +1926,7 @@ void importThread::_importAlbCli()
                     wl.bindValue(":id_cab",idCab);
                     wl.bindValue(":id_articulo",_articulos.value(codigo));
                     wl.bindValue(":codigo",codigo);
-                    wl.bindValue(":cantidad",lRecord.value("NCANPED").toDouble());
+                    wl.bindValue(":cantidad",lRecord.value("NCANENT").toDouble());
                     wl.bindValue(":descripcion",lRecord.value("CDETALLE"));
                     wl.bindValue(":precio",lRecord.value("NPREUNIT"));
 
