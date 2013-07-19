@@ -23,12 +23,9 @@ class importDialog : public QDialog
 public:
     explicit importDialog(QWidget *parent = 0);
     ~importDialog();
-    
-    bool anyImport();
+
 private slots:
     void on_btnSearchBD_clicked();
-
-    void checkBox_toggled(bool checked);
 
     void on_btnImportar_clicked();
     void reEnableImportar();

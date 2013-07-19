@@ -10,12 +10,7 @@ importDialog::importDialog(QWidget *parent) :
 {
     qRegisterMetaType<QSqlRecord>("QSqlRecord");
     ui->setupUi(this);
-    QList<QCheckBox *> cbs = this->findChildren<QCheckBox *>();
-    QList<QCheckBox *>::Iterator i;
-    for(i=cbs.begin();i!=cbs.end();++i)
-    {
-        connect((*i),SIGNAL(toggled(bool)),this,SLOT(checkBox_toggled(bool)));
-    }
+
     connect(ui->txtHost,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
     connect(ui->txtUser,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
     connect(ui->txtPass,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
@@ -44,21 +39,7 @@ void importDialog::on_btnSearchBD_clicked()
     ui->txtRutaBD->setText(route);
 }
 
-bool importDialog::anyImport()
-{
-    QList<QCheckBox *> cbs = this->findChildren<QCheckBox *>();
-    QList<QCheckBox *>::Iterator i;
-    bool anyCheck = false;
-    for(i=cbs.begin();i!=cbs.end();++i)
-    {
-        if((*i)->isChecked())
-        {
-            anyCheck = true;
-            break;
-        }
-    }
-    return anyCheck;
-}
+
 
 
 void importDialog::on_btnImportar_clicked()
@@ -101,10 +82,6 @@ void importDialog::on_btnImportar_clicked()
         importThread * Thread = new importThread(mainWin , this);
         Thread->setPath(_empDir);
 
-        Thread->importClientes(ui->clientCheck->isChecked());
-        Thread->importFormPago(ui->fPagoCheck->isChecked());
-        Thread->importProveedores(ui->provCheck->isChecked());
-        Thread->importArticulos(ui->articulosCheck->isChecked());
         Thread->setIvaRelation(_ivas);
 
         connect(Thread,SIGNAL(finished()),Thread,SLOT(deleteLater()));
