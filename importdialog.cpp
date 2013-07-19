@@ -60,36 +60,6 @@ bool importDialog::anyImport()
     return anyCheck;
 }
 
-void importDialog::checkBox_toggled(bool checked)
-{
-    if(checked)
-    {
-        ui->btnImportar->setText("Importar");
-        ui->btnImportar->setEnabled(true && _conected);
-        if(sender()==ui->clientCheck || sender()==ui->provCheck)
-        {
-            ui->fPagoCheck->setChecked(true);
-            ui->fPagoCheck->setEnabled(false);
-        }
-        if(sender()==ui->articulosCheck)
-        {
-            ui->provCheck->setChecked(true);
-            ui->provCheck->setEnabled(false);
-        }
-    }
-    else
-    {
-        if(sender()==ui->clientCheck && !ui->provCheck->isChecked())
-            ui->fPagoCheck->setEnabled(true);
-        if(sender()==ui->provCheck && !ui->clientCheck->isChecked())
-            ui->fPagoCheck->setEnabled(true);
-        if(sender()==ui->articulosCheck)
-            ui->provCheck->setEnabled(true);
-
-        bool anyCheck = anyImport();
-        ui->btnImportar->setEnabled(anyCheck && _conected);
-    }
-}
 
 void importDialog::on_btnImportar_clicked()
 {
@@ -116,6 +86,7 @@ void importDialog::on_btnImportar_clicked()
             _ivas[model->record(ui->comboIva4->currentIndex()).value("CTIPOIVA").toString().trimmed()] = 4;
 
             ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);
+            ui->btnImportar->setText("Importar");
         }
         else
         {

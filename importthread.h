@@ -99,7 +99,9 @@ private:
     void _importArticulos();
 
     void _importPresCli();
-
+    void _importPedCli();
+    void _importAlbCli();
+    void _importFacCli();
     QHash<QString,int> _articulos;// CREF,id
     QHash<QString,QSqlRecord> _clientes;// CCODCLI,id
     QHash<QString,int> _fpago;

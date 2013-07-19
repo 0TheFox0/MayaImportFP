@@ -273,7 +273,7 @@ void GroupCreator::_createEmpresa()
 
             for(int i = 0; i< querys.size();i++)
             {
-                if(!querys.at(i).isEmpty())
+                if(querys.at(i).size() > 10)
                 {
                     if(!q.exec(querys.at(i)))
                     {
@@ -288,7 +288,7 @@ void GroupCreator::_createEmpresa()
         }
 
         if(!error)
-        {
+        { /*
             QString query = QString(
                         "INSERT INTO `@grupo@`.`empresas` "
                         "(`codigo`, `nombre`, `digitos_factura`, `serie`, `nombre_bd`, `nombre_db_conta`,"
@@ -308,7 +308,7 @@ void GroupCreator::_createEmpresa()
                         "`cuenta_iva_repercutido2`, `cuenta_iva_repercutido3`, `cuenta_iva_repercutido4`,"
                         "`cuenta_iva_repercutido1_re`, `cuenta_iva_repercutido2_re`, `cuenta_iva_repercutido3_re`,"
                         "`cuenta_iva_repercutido4_re`, `cuenta_iva_soportado1_re`, `cuenta_iva_soportado2_re`,"
-                        "`cuenta_iva_soportado3_re`, `cuenta_iva_soportado4_re`)"
+                        "`cuenta_iva_soportado3_re`, `cuenta_iva_soportado4_re`) "
                         "VALUES "
                         "(:codigo, :nombre, :digitos_factura, :serie, :nombre_bd, :nombre_db_conta,"
                         ":nombre_bd_medica, :direccion, :cp, :poblacion, :provincia, :pais,"
@@ -341,17 +341,17 @@ void GroupCreator::_createEmpresa()
             q.bindValue(":nombre_bd",nEmpresa);
             q.bindValue(":nombre_db_conta",nConta);
             q.bindValue(":nombre_bd_medica",nMedic);
-            q.bindValue(":direccion",_empresaFp.value("CDOMICILIO").toString());
-            q.bindValue(":cp",_empresaFp.value("CCODPOS").toString());
-            q.bindValue(":poblacion",_empresaFp.value("CPOBLACION").toString());
-            q.bindValue(":provincia",_empresaFp.value("CPROVINCIA").toString());
+            q.bindValue(":direccion",_empresaFp.value("CDOMICILIO").toString().trimmed());
+            q.bindValue(":cp",_empresaFp.value("CCODPOS").toString().trimmed());
+            q.bindValue(":poblacion",_empresaFp.value("CPOBLACION").toString().trimmed());
+            q.bindValue(":provincia",_empresaFp.value("CPROVINCIA").toString().trimmed());
             q.bindValue(":pais","ESPAÑA");//TODO cambiar esto
-            q.bindValue(":telefono1",_empresaFp.value("CTLF").toString());
+            q.bindValue(":telefono1",_empresaFp.value("CTLF").toString().trimmed());
             q.bindValue(":telefono2","");
-            q.bindValue(":fax",_empresaFp.value("CFAX").toString());
-            q.bindValue(":mail",_empresaFp.value("CEMAIL").toString());
+            q.bindValue(":fax",_empresaFp.value("CFAX").toString().trimmed());
+            q.bindValue(":mail",_empresaFp.value("CEMAIL").toString().trimmed());
             q.bindValue(":web","");
-            q.bindValue(":cif",_empresaFp.value("CNIF").toString());
+            q.bindValue(":cif",_empresaFp.value("CNIF").toString().trimmed());
             q.bindValue(":inscripcion","");
             q.bindValue(":comentario_albaran","");
             q.bindValue(":comentario_factura","");
@@ -402,12 +402,46 @@ void GroupCreator::_createEmpresa()
             q.bindValue(":cuenta_iva_soportado1_re","");
             q.bindValue(":cuenta_iva_soportado2_re","");
             q.bindValue(":cuenta_iva_soportado3_re","");
-            q.bindValue(":cuenta_iva_soportado4_re","");
+            q.bindValue(":cuenta_iva_soportado4_re","");*/
+            QString query = QString(
+                        "INSERT INTO `@grupo@`.`empresas` "
+                        "(`codigo`, `nombre`, `digitos_factura`, `serie`, `nombre_bd`, `nombre_db_conta`,"
+                        "`nombre_bd_medica`, `direccion`, `cp`, `poblacion`, `provincia`, `pais`,"
+                        "`telefono1`,  `fax`, `mail`, `cif`) "
+                        "VALUES "
+                        "(:codigo, :nombre, 9 , 1, :nombre_bd, :nombre_db_conta,"
+                        ":nombre_bd_medica, :direccion, :cp, :poblacion, :provincia, :pais,"
+                        ":telefono1, :fax, :mail, :cif);"
+                        );
+            QString grupo = "Grupo";
+            grupo.append(_nombre);
 
-            if(!q.exec())
-                qDebug() << q.lastError().text();
+            query = query.replace("@grupo@",grupo);
+            QSqlQuery q2(QSqlDatabase::database("grupo"));
+            q2.prepare(query);
+            q2.bindValue(":codigo",_empresaFp.value("CODEMP").toString().trimmed());
+            q2.bindValue(":nombre",n_empresa);
+            q2.bindValue(":nombre_bd",nEmpresa);
+            q2.bindValue(":nombre_db_conta",nConta);
+            q2.bindValue(":nombre_bd_medica",nMedic);
+            q2.bindValue(":direccion",_empresaFp.value("CDOMICILIO").toString().trimmed());
+            q2.bindValue(":cp",_empresaFp.value("CCODPOS").toString().trimmed());
+            q2.bindValue(":poblacion",_empresaFp.value("CPOBLACION").toString().trimmed());
+            q2.bindValue(":provincia",_empresaFp.value("CPROVINCIA").toString().trimmed());
+            q2.bindValue(":pais","ESPAÑA");//TODO cambiar esto
+            q2.bindValue(":telefono1",_empresaFp.value("CTLF").toString().trimmed());
+            q2.bindValue(":fax",_empresaFp.value("CFAX").toString().trimmed());
+            q2.bindValue(":mail",_empresaFp.value("CEMAIL").toString().trimmed());
+            q2.bindValue(":cif",_empresaFp.value("CNIF").toString().trimmed());
+
+            if(!q2.exec())
+            {
+                qDebug() << q2.lastError().text();
+                qDebug() << q2.boundValues();
+            }
             else
             {
+                db.close();
                 db.setHostName(_host);
                 db.setUserName(_user);
                 db.setPassword(_pass);

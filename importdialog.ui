@@ -408,40 +408,11 @@
      <widget class="QWidget" name="page_5">
       <layout class="QVBoxLayout" name="verticalLayout_5">
        <item>
-        <widget class="QGroupBox" name="groupBoxDatos">
-         <property name="title">
-          <string>Datos a importar</string>
+        <widget class="QLabel" name="label_20">
+         <property name="text">
+          <string>Puede comenzar con la importación. 
+Esto va a tardar de cojones...</string>
          </property>
-         <layout class="QGridLayout" name="gridLayout">
-          <item row="0" column="0">
-           <widget class="QCheckBox" name="clientCheck">
-            <property name="text">
-             <string>Clientes</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QCheckBox" name="articulosCheck">
-            <property name="text">
-             <string>Articulos</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QCheckBox" name="provCheck">
-            <property name="text">
-             <string>Proveedores</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QCheckBox" name="fPagoCheck">
-            <property name="text">
-             <string>Formas de pago</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
         </widget>
        </item>
        <item>
