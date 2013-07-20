@@ -105,6 +105,7 @@ private:
     QHash<QString,int> _articulos;// CREF,id
     QHash<QString,QSqlRecord> _clientes;// CCODCLI,id
     QHash<QString,int> _fpago;
+    QHash<QString,QString> _sFPago;
     QHash<QString,QString> _cCliente;
     QHash<QString,QString> _cArticulos;
     QHash<QString,double> _stockArticulos;
@@ -114,6 +115,7 @@ private:
     QHash<QString,int> _ivaRelation;
     QHash<QString,int> _divisas;
     QHash<QString,int> _codTarifa;
+    QHash<QString,QString> _pedidoFromAlb;
     bool _hardStop;
     bool _haveError;
     bool m_importFormPago;

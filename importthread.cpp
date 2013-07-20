@@ -395,7 +395,10 @@ void importThread::_importFormPago()
         wq.bindValue(":numero_plazos",r.value("NPLAZOS").toDouble());
 
         if(wq.exec())
+        {
             _fpago[ccod] = wq.lastInsertId().toInt();
+            _sFPago[ccod] = desc;
+        }
         else
         {
             _haveError = true;
@@ -1825,7 +1828,6 @@ void importThread::_importAlbCli()
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
-    QHash<QString,int> nPedidoCliente;
     if(coment.exec("SELECT * FROM d_Albclic"))
     {
         while(coment.next())
@@ -2042,14 +2044,13 @@ void importThread::_importAlbCli()
                                   "`imp_gasto1`=:imp_gasto1"
                                   " WHERE `id`=:id;");
 
-                if(nPedidoCliente.contains(rCab.value("CCODCLI").toString().trimmed()))
-                    nPedidoCliente[rCab.value("CCODCLI").toString().trimmed()]++;
-                else
-                    nPedidoCliente.insert(rCab.value("CCODCLI").toString().trimmed(),1);
+                updateCab.bindValue(":fecha",rCab.value("DFECALB").toDate());
+                QString NNUMPED = rCab.value("NNUMPED").toString().trimmed();
+                updateCab.bindValue(":pedido_cliente",NNUMPED);
                 QSqlRecord rClient = _clientes.value(rCab.value("CCODCLI").toString().trimmed());
 
-                updateCab.bindValue(":fecha",rCab.value("DFECALB").toDate());
-                updateCab.bindValue(":pedido_cliente",rCab.value("NNUMPED").toString().trimmed());
+                _pedidoFromAlb.insert(NNUMPRE,NNUMPED);
+
                 //updateCab.bindValue("pedido_cliente",nPedidoCliente.value(rCab.value("CCODCLI").toString().trimmed()));
 
                 updateCab.bindValue(":id_cliente",rClient.value("id").toInt());
@@ -2195,12 +2196,14 @@ void importThread::_importFacCli()
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
-    QHash<QString,int> nPedidoCliente;
+
     if(coment.exec("SELECT * FROM d_Facclic"))
     {
         while(coment.next())
         {
-            QString num = coment.record().value("NNUMALB").toString().trimmed();
+            QString num = coment.record().value("NNUMFAC").toString().trimmed();
+            QString serie = coment.record().value("CSERIE").toString().trimmed();
+            num.prepend(serie);
             QString com = coment.record().value("CCOMENT").toString().trimmed();
             if(comenPed.contains(num))
             {
@@ -2215,7 +2218,7 @@ void importThread::_importFacCli()
     }
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
-    if(!q.exec("SELECT * FROM d_Albclit"))
+    if(!q.exec("SELECT * FROM d_Facclit"))
     {
         emit Error(q.lastError().text());
         return;
@@ -2243,15 +2246,21 @@ void importThread::_importFacCli()
 
         QSqlRecord rCab = q.record();
         QSqlQuery linea(QSqlDatabase::database("dbfEditor"));
-        QString NNUMPRE = rCab.value("NNUMALB").toString();
+        QString NNUMPRE = rCab.value("NNUMFAC").toString();
+        QString serie = rCab.value("CSERIE").toString().trimmed();
         double totalRE = rCab.value("NTOTALREC").toDouble();
-        wq.prepare("INSERT INTO `cab_alb` (`albaran`) VALUES (:n);");
+
+        QString comentKey = serie + NNUMPRE;
+
+        wq.prepare("INSERT INTO `cab_fac` (`serie`, `factura`) VALUES (:s,:n);");
+        wq.bindValue(":s",serie);
         wq.bindValue(":n",NNUMPRE);
         if(wq.exec())
         {
             int idCab = wq.lastInsertId().toInt();
-            linea.prepare("SELECT * FROM d_Albclil where NNUMALB=:n");
+            linea.prepare("SELECT * FROM d_Facclil where NNUMFAC=:n AND CSERIE=:s");
             linea.bindValue(":n",NNUMPRE);
+            linea.bindValue(":s",serie);
             if(linea.exec())
             {
                 double base1 = 0;
@@ -2284,7 +2293,7 @@ void importThread::_importFacCli()
                 {
                     QSqlRecord lRecord = linea.record();
                     QSqlQuery wl(QSqlDatabase::database("empresa"));
-                    wl.prepare("INSERT INTO `lin_alb` "
+                    wl.prepare("INSERT INTO `lin_fac` "
                                "(`id_cab`, `id_articulo`, `codigo`, `cantidad`,"
                                "`descripcion`, `precio`, `subtotal`, `porc_dto`,"
                                "`dto`, `porc_iva`, `iva`, `porc_rec`, `rec`, `total`)"
@@ -2296,7 +2305,7 @@ void importThread::_importFacCli()
                     wl.bindValue(":id_cab",idCab);
                     wl.bindValue(":id_articulo",_articulos.value(codigo));
                     wl.bindValue(":codigo",codigo);
-                    wl.bindValue(":cantidad",lRecord.value("NCANPED").toDouble());
+                    wl.bindValue(":cantidad",lRecord.value("NCANENT").toDouble());
                     wl.bindValue(":descripcion",lRecord.value("CDETALLE"));
                     wl.bindValue(":precio",lRecord.value("NPREUNIT"));
 
@@ -2391,50 +2400,50 @@ void importThread::_importFacCli()
                 double nDtoCab = nTotBruto * (porc_dtoCab / 100.0);
 
                 QSqlQuery updateCab(QSqlDatabase::database("empresa"));
-
-                updateCab.prepare("UPDATE `cab_alb` SET "
-                                  "`fecha`=:fecha, pedido_cliente=:pedido_cliente,"
-                                  "`id_cliente`=:id_cliente, `codigo_cliente`=:codigo_cliente, `cliente`=:cliente,"
-                                  "`direccion1`=:direccion1, `direccion2`=:direccion2, `poblacion`=:poblacion,"
-                                  "`provincia`=:provincia, `cp`=:cp, `id_pais`=:id_pais, `cif`=:cif,"
-                                  "`telefono`=:telefono, `fax`=:fax, `movil`=:movil,"
+                //`fecha_cobro`='a', `importe_pendiente`='a',
+                //"`codigo_entidad`='a', `oficina_entidad`='a',"  sacar de cliente??
+                //"`dc_cuenta`='a', `cuenta_corriente`='a',
+                //"`gasto_to_coste`='a', `asiento`='a'"
+                updateCab.prepare("UPDATE `cab_fac` SET "
+                                  "`codigo_cliente`=:codigo_cliente, `fecha`=:fecha, "
+                                  "`id_cliente`=:id_cliente, `cliente`=:cliente,"
+                                  "`direccion1`=:direccion1, `direccion2`=:direccion2, `cp`=:cp,"
+                                  "`poblacion`=:poblacion, `provincia`=:provincia, `id_pais`=:id_pais,"
+                                  "`cif`=:cif, `telefono`=:telefono, `fax`=:fax, `movil`=:movil,"
                                   "`recargo_equivalencia`=:recargo_equivalencia, `subtotal`=:subtotal,"
-                                  "`dto`=:dto, `porc_dto`=:porc_dto,"
+                                  "`porc_dto`=:porc_dto, `porc_dto_pp`=:porc_dto_pp, `dto`=:dto, `dto_pp`=:dto_pp,"
+                                  "`base`=:base, `porc_irpf`=:porc_irpf, `irpf`=:irpf, `iva`=:iva, `total`=:total,"
+                                  "`impreso`=:impreso, `cobrado`=:cobrado, `contabilizado`=:contabilizado,"
+                                  "`id_forma_pago`=:id_forma_pago, `forma_pago`=:forma_pago,"
+                                  "`comentario`=:comentario,"
                                   "`base1`=:base1, `base2`=:base2, `base3`=:base3, `base4`=:base4,"
                                   "`porc_iva1`=:porc_iva1, `porc_iva2`=:porc_iva2, `porc_iva3`=:porc_iva3, `porc_iva4`=:porc_iva4,"
                                   "`iva1`=:iva1, `iva2`=:iva2, `iva3`=:iva3, `iva4`=:iva4,"
+                                  "`total1`=:total1, `total2`=:total2, `total3`=:total3, `total4`=:total4,"
                                   "`porc_rec1`=:porc_rec1, `porc_rec2`=:porc_rec2, `porc_rec3`=:porc_rec3, `porc_rec4`=:porc_rec4,"
                                   "`rec1`=:rec1, `rec2`=:rec2, `rec3`=:rec3, `rec4`=:rec4,"
-                                  "`total1`=:total1, `total2`=:total2, `total3`=:total3, `total4`=:total4,"
-                                  "`base_total`=:base_total, `iva_total`=:iva_total, `rec_total`=:rec_total, `total_albaran`=:total_albaran,"
-                                  "`impreso`=:impreso, `facturado`=:facturado, `factura`=:factura,"
-                                  "`comentario`=:comentario, `entregado_a_cuenta`=:entregado_a_cuenta, `desc_gasto1`='Portes',"
-                                  "`imp_gasto1`=:imp_gasto1"
+                                  "`total_recargo`=:total_recargo, `entregado_a_cuenta`=:entregado_a_cuenta,"
+                                  "`pedido_cliente`=:pedido_cliente, `desc_gasto1`='Portes', `imp_gasto1`=:imp_gasto1"
                                   " WHERE `id`=:id;");
 
-                if(nPedidoCliente.contains(rCab.value("CCODCLI").toString().trimmed()))
-                    nPedidoCliente[rCab.value("CCODCLI").toString().trimmed()]++;
-                else
-                    nPedidoCliente.insert(rCab.value("CCODCLI").toString().trimmed(),1);
+                QString NUMPED = _pedidoFromAlb.value(rCab.value("NNUMALB").toString().trimmed());
                 QSqlRecord rClient = _clientes.value(rCab.value("CCODCLI").toString().trimmed());
 
-                updateCab.bindValue(":fecha",rCab.value("DFECALB").toDate());
-                updateCab.bindValue(":pedido_cliente",rCab.value("NNUMPED").toString().trimmed());
-                //updateCab.bindValue("pedido_cliente",nPedidoCliente.value(rCab.value("CCODCLI").toString().trimmed()));
+                updateCab.bindValue(":codigo_cliente",rClient.value("codigo_cliente").toString());
+                updateCab.bindValue(":fecha",rCab.value("DFECFAC").toDate());
 
                 updateCab.bindValue(":id_cliente",rClient.value("id").toInt());
-                updateCab.bindValue(":codigo_cliente",rClient.value("codigo_cliente").toString());
                 updateCab.bindValue(":cliente",rClient.value("nombre_fiscal").toString());
 
                 updateCab.bindValue(":direccion1",rClient.value("direccion1").toString());
                 updateCab.bindValue(":direccion2",rClient.value("direccion2").toString());
-                updateCab.bindValue(":poblacion",rClient.value("poblacion").toString());
-
-                updateCab.bindValue(":provincia",rClient.value("provincia").toString());
                 updateCab.bindValue(":cp",rClient.value("cp").toString());
-                updateCab.bindValue(":id_pais",rClient.value("id_pais").toInt());
-                updateCab.bindValue(":cif",rClient.value("cif_nif").toString());
 
+                updateCab.bindValue(":poblacion",rClient.value("poblacion").toString());
+                updateCab.bindValue(":provincia",rClient.value("provincia").toString());
+                updateCab.bindValue(":id_pais",rClient.value("id_pais").toInt());
+
+                updateCab.bindValue(":cif",rClient.value("cif_nif").toString());
                 updateCab.bindValue(":telefono",rClient.value("telefono1").toString());
                 updateCab.bindValue(":fax",rClient.value("fax").toString());
                 updateCab.bindValue(":movil",rClient.value("movil").toString());
@@ -2442,8 +2451,32 @@ void importThread::_importFacCli()
                 updateCab.bindValue(":recargo_equivalencia",totalRE > 0);
                 updateCab.bindValue(":subtotal",nTotBruto);
 
+                updateCab.bindValue(":pedido_cliente",rCab.value("NNUMPED").toString().trimmed());
+                //updateCab.bindValue("pedido_cliente",nPedidoCliente.value(rCab.value("CCODCLI").toString().trimmed()));
+
                 updateCab.bindValue(":porc_dto",porc_dtoCab);
                 updateCab.bindValue(":dto",nDtoCab);
+
+                double porc_dto_pp = rCab.value("NDPP").toDouble();
+                double dto_pp = nTotBruto * (porc_dto_pp / 100.0);
+
+                updateCab.bindValue(":porc_dto_pp",porc_dto_pp);
+                updateCab.bindValue(":dto_pp",dto_pp);
+
+                updateCab.bindValue(":base",rCab.value("NBASEESP").toDouble());
+                updateCab.bindValue(":porc_irpf",rCab.value("NIRPF").toDouble());
+                updateCab.bindValue(":irpf",rCab.value("NTOTIRPF").toDouble());
+                updateCab.bindValue(":iva",rCab.value("NTOTALIVA").toDouble());
+                updateCab.bindValue(":total",rCab.value("NTOTFAC").toDouble());
+
+                updateCab.bindValue(":impreso",rCab.value("LIMPRESO").toBool());
+                updateCab.bindValue(":cobrado",rCab.value("LLIQUIDADA").toBool());
+                updateCab.bindValue(":contabilizado",rCab.value("LCONTAB").toBool());
+
+                updateCab.bindValue(":id_forma_pago",_fpago.value(rCab.value("CCODPAGO").toString().trimmed()));
+                updateCab.bindValue(":forma_pago",_sFPago.value(rCab.value("CCODPAGO").toString().trimmed()));
+
+                updateCab.bindValue(":comentario",comenPed.value(comentKey));
 
                 updateCab.bindValue(":base1",base1);
                 updateCab.bindValue(":base2",base2);
@@ -2460,6 +2493,11 @@ void importThread::_importFacCli()
                 updateCab.bindValue(":iva3",iva3);
                 updateCab.bindValue(":iva4",0);
 
+                updateCab.bindValue(":total1",base1 + iva1 + re1);
+                updateCab.bindValue(":total2",base2 + iva2 + re2);
+                updateCab.bindValue(":total3",base3 + iva3 + re3);
+                updateCab.bindValue(":total4",base4);
+
                 updateCab.bindValue(":porc_rec1",porc_re1);
                 updateCab.bindValue(":porc_rec2",porc_re2);
                 updateCab.bindValue(":porc_rec3",porc_re3);
@@ -2468,26 +2506,12 @@ void importThread::_importFacCli()
                 updateCab.bindValue(":rec1",re1);
                 updateCab.bindValue(":rec2",re2);
                 updateCab.bindValue(":rec3",re3);
-                updateCab.bindValue(":rec4",0);
+                updateCab.bindValue(":rec4",0);                             
 
-                updateCab.bindValue(":total1",base1 + iva1 + re1);
-                updateCab.bindValue(":total2",base2 + iva2 + re2);
-                updateCab.bindValue(":total3",base3 + iva3 + re3);
-                updateCab.bindValue(":total4",base4);
-
-                updateCab.bindValue(":base_total",rCab.value("NBASEESP").toDouble());
-                updateCab.bindValue(":iva_total",rCab.value("NTOTALIVA").toDouble());
-                updateCab.bindValue(":rec_total",rCab.value("NTOTALREC").toDouble());
-                updateCab.bindValue(":total_albaran",rCab.value("NTOTFAC").toDouble());
-
-                updateCab.bindValue(":impreso",rCab.value("LIMPRESO").toBool());
-                updateCab.bindValue(":facturado",rCab.value("LFACTURADO").toBool());
-                updateCab.bindValue(":factura",rCab.value("CFACTURA").toString().trimmed());
-
-                updateCab.bindValue(":comentarios",comenPed.value(rCab.value("NNUMPRE").toString().trimmed()));
-
+                updateCab.bindValue(":total_recargo",rCab.value("NTOTALREC").toDouble());
                 updateCab.bindValue(":entregado_a_cuenta",rCab.value("NENTCUENTA").toDouble());
 
+                updateCab.bindValue(":pedido_cliente",NUMPED);
                 updateCab.bindValue(":imp_gasto1",rCab.value("NPORTES").toDouble());
 
                 updateCab.bindValue(":id",idCab);
@@ -2498,7 +2522,6 @@ void importThread::_importFacCli()
 //                updateCab.bindValue(":importe_pendiente",0);
 //                updateCab.bindValue(":factura",rCab.value("CFACTURA").toString().trimmed());
 //                updateCab.bindValue(":albaran",0);
-//                updateCab.bindValue(":id_forma_pago",_fpago.value(rCab.value("CCODPAGO").toString().trimmed()));
 //                updateCab.bindValue(":lugar_entrega","");
 //                updateCab.bindValue(":atencion_de","");
 //                updateCab.bindValue(":email",rClient.value("email").toString());
@@ -2508,8 +2531,6 @@ void importThread::_importFacCli()
 //                updateCab.bindValue(":importe4",importe4);
 //                double porc_dto_pp = rCab.value("NDPP").toDouble();
 //                double dto_pp = nTotBruto * (porc_dto_pp / 100.0);
-//                updateCab.bindValue(":porc_dto_pp",porc_dto_pp);
-//                updateCab.bindValue(":dto_pp",dto_pp);
 //                updateCab.bindValue(":entregado_a_cuenta",rCab.value("NENTCUENTA").toDouble());
 
 
@@ -2543,9 +2564,9 @@ void importThread::_importFacCli()
 
     emit sizeOfTask(0);
     emit Progress(tr("Borrando datos temporales"),0);
-    q.exec("DROP TABLE IF EXISTS d_Preclit");
-    q.exec("DROP TABLE IF EXISTS d_Preclil");
-    q.exec("DROP TABLE IF EXISTS d_Preclic");
+    q.exec("DROP TABLE IF EXISTS d_Facclit");
+    q.exec("DROP TABLE IF EXISTS d_Facclil");
+    q.exec("DROP TABLE IF EXISTS d_Facclic");
 }
 
 void importThread::run()
@@ -2558,6 +2579,7 @@ void importThread::run()
     if(!_hardStop && !_haveError){ _importPresCli();  }
     if(!_hardStop && !_haveError){ _importPedCli();   }
     if(!_hardStop && !_haveError){ _importAlbCli();   }
+    if(!_hardStop && !_haveError){ _importFacCli();   }
 
     if(_haveError && _error!="")
         emit Error(_error);

@@ -4,6 +4,66 @@
 #include "progressdialog.h"
 #include "src/mainwindow.h"
 #include "setdivisas.h"
+int SQLInsert(QHash<QString,QVariant> values, QString table, QSqlDatabase database, QString& error)
+{
+    if(!database.isOpen())
+    {
+        error = tr("Base de datos cerrada");
+        return false;
+    }
+    if(database.driverName() == "QMYSQL")
+    {
+        qDebug()<< "Mysql";
+    }
+    else if (database.driverName() == "QSQLITE")
+    {
+
+    }
+    QString colums;
+    QTextStream s(&colums);
+
+    QString data;
+    QTextStream s1(&data);
+
+    //INSERT INTO `world`.`cab_fac` (`serie`) VALUES ('a');
+    s << "INSERT INTO `" << table << "` (";
+    s1 << "VALUES (";
+    QHashIterator<QString,QVariant> i(values);
+    while (i.hasNext()) {
+        i.next();
+        s << "`" << i.key() << "`";
+        s1 << ":" << i.key();
+        if(i.hasNext())
+        {
+            s  << ",";
+            s1 << ",";
+        }
+    }
+    s1 << ");";
+    s << ")" << data;
+
+    qDebug() << "query final = " << colums;
+    QSqlQuery q(database);
+    q.prepare(colums);
+
+    QHashIterator<QString,QVariant> it(values);
+    while (it.hasNext()) {
+        it.next();
+        QString aux = ":";
+        aux.append(it.key());
+        q.bindValue(aux,it.value());
+    }
+
+
+    bool b = q.exec();
+    int r = -1;
+    if (b)
+        r = q.lastInsertId().toInt();
+    else
+        error = q.lastError().text();
+    return r;
+}
+
 importDialog::importDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::importDialog)
@@ -11,6 +71,25 @@ importDialog::importDialog(QWidget *parent) :
     qRegisterMetaType<QSqlRecord>("QSqlRecord");
     ui->setupUi(this);
 
+    QSqlDatabase db = QSqlDatabase::addDatabase("QMYSQL");
+    db.setHostName("localhost");
+    db.setUserName("root");
+    db.setPassword("marco");
+    db.open();
+/*
+    QHash<QString,QVariant> v;
+    v["serie"]="A";
+    v["factura"]="9089";
+    v["cliente"]="pepito's bar of su puta madre";
+    v["impreso"]=true;
+    v["fecha"] = QDate::currentDate();
+
+    int id = SQLInsert(v,"world`.`cab_fac",db);
+    if(id >= 0)
+        qDebug() << "Inserted at id " << id;
+    else
+        qDebug() << "Joder...";
+*/
     connect(ui->txtHost,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
     connect(ui->txtUser,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
     connect(ui->txtPass,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
