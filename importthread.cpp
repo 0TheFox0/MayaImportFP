@@ -3664,9 +3664,9 @@ void importThread::run()
 {
     _checkIva();
     _updateDivisas();
-    if(!_hardStop && !_haveError){ _importFormPago(); }
-    if(!_hardStop && !_haveError){ _importClients();  }
-    if(!_hardStop && !_haveError){ _importProv();     }
+    //if(!_hardStop && !_haveError){ _importFormPago(); }
+    //if(!_hardStop && !_haveError){ _importClients();  }
+    //if(!_hardStop && !_haveError){ _importProv();     }
     if(!_hardStop && !_haveError){ _importArticulos();}
 
     if(!_hardStop && !_haveError){ _importPresCli();  }
@@ -3789,24 +3789,25 @@ void importThread::_checkIva()
 
 int importThread::_getIdIva(QString cod)
 {
-    if(_ivaRelation.value(cod) == 2)
+  /*  if(_ivaRelation.value(cod) == 2)
         return _ivas.value("base2").value("id").toInt();
     if(_ivaRelation.value(cod) == 3)
         return _ivas.value("base3").value("id").toInt();
     if(_ivaRelation.value(cod) == 4)
         return _ivas.value("base4").value("id").toInt();
-    return _ivas.value("base1").value("id").toInt();
+    return _ivas.value("base1").value("id").toInt();*/
+    return _ivaRelation.value(cod);
 }
 
 double importThread::_getRIva(QString cod)
 {
     if(_ivaRelation.value(cod) == 2)
-        return _ivas.value("base2").value("nIVA").toDouble();
+        return _ivas.value("base2").value("iva").toDouble();
     if(_ivaRelation.value(cod) == 3)
-        return _ivas.value("base3").value("nIVA").toDouble();
+        return _ivas.value("base3").value("iva").toDouble();
     if(_ivaRelation.value(cod) == 4)
-        return _ivas.value("base3").value("nIva").toDouble();
-    return _ivas.value("base1").value("nIVA").toDouble();
+        return _ivas.value("base3").value("iva").toDouble();
+    return _ivas.value("base1").value("iva").toDouble();
 }
 QString importThread::_ValidarCC(QString Entidad, QString Oficina, QString CC)
 {
