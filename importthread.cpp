@@ -1,6 +1,11 @@
 #include "importthread.h"
 
 #include <QScopedPointer>
+#include <QApplication>
+//#include "Sqlcalls.h"
+
+extern int SqlInsert(QHash<QString,QVariant> values, QString table, QSqlDatabase database, QString& error);
+extern bool SqlUpdate(QHash<QString,QVariant> values, QString table, QSqlDatabase database, QString clausula, QString& error);
 importThread::importThread(MainWindow * mw, QObject *parent) :
     QThread(parent)
 {
@@ -183,7 +188,7 @@ void importThread::_importClients()
         wq.bindValue(":cCP",r.value("CPTLCLI").toString().trimmed());
         wq.bindValue(":cPoblacion",r.value("CPOBCLI").toString().trimmed().toUpper());
         wq.bindValue(":cProvincia",r.value("CCODPROV").toString().trimmed()); // TODO hay que poner el nombre, no el código.
-        wq.bindValue(":idpais",-1);//TODO id_pais
+        wq.bindValue(":idpais",_paisRelation.value(r.value("CNACCLI").toString().trimmed()));
         wq.bindValue(":cTelefono1",r.value("CTFO1CLI").toString().trimmed());
         wq.bindValue(":cTelefono2",r.value("CTFO2CLI").toString().trimmed());
         wq.bindValue(":cFax",r.value("CFAXCLI").toString().trimmed());
@@ -379,7 +384,7 @@ void importThread::_importFormPago()
          "30:" QSqlField("LIMPORMETA", uint, length: 1, required: no, generated: yes) "0"
          "31:" QSqlField("NVENCAPART", double, length: 15, required: no, generated: yes, typeID: 8) "2"
          "32:" QSqlField("CIMAGENORI", QString, length: 128, required: no, generated: yes, typeID: 12) ""
-        */
+
 
 
         wq.prepare(
@@ -394,15 +399,27 @@ void importThread::_importFormPago()
         wq.bindValue(":cuenta_cont_pago",r.value("CCTAPAGO").toString().trimmed());
         wq.bindValue(":numero_plazos",r.value("NPLAZOS").toDouble());
 
-        if(wq.exec())
+        */
+
+        QHash<QString,QVariant> v;
+
+        v["codigo"]=ccod;
+        v["forma_pago"]=desc;
+        v["dia_pago1"]=r.value("NDIASAPL").toDouble();
+        v["cuenta_cont_pago"]=r.value("CCTAPAGO").toString().trimmed();
+        v["numero_plazos"]=r.value("NPLAZOS").toDouble();
+
+        int id = SqlInsert(v,"formpago",QSqlDatabase::database("grupo"),_error);
+        //if(wq.exec())
+        if (id >=0)
         {
-            _fpago[ccod] = wq.lastInsertId().toInt();
+            _fpago[ccod] = id;//wq.lastInsertId().toInt();
             _sFPago[ccod] = desc;
         }
         else
         {
             _haveError = true;
-            _error = wq.lastError().text();
+            //_error = wq.lastError().text();
         }
     }while(q.next());
     emit sizeOfTask(0);
@@ -551,8 +568,8 @@ void importThread::_importProv()
         wq.bindValue(":recargo_equivalencia",0);
         wq.bindValue(":texto_para_pedidos","");
         wq.bindValue(":entregado_a_cuenta",0);
-        wq.bindValue(":id_pais",-1);
-        wq.bindValue(":id_monedas",-1);
+        wq.bindValue(":id_pais",_paisRelation.value(r.value("CNACPRO").toString().trimmed()));
+        wq.bindValue(":id_monedas",_divisas.value(r.value("CCODDIV").toString().trimmed()));
 
        // qDebug() << wq.boundValues();
         if(!wq.exec())
@@ -562,7 +579,15 @@ void importThread::_importProv()
         }
         else
         {
-            _prov.insert(r.value("CCODPRO").toString().trimmed(),wq.lastInsertId().toInt());
+            int cli = wq.lastInsertId().toInt();
+            wq.exec(QString("SELECT * FROM proveedores where id =%1;").arg(cli));
+            if(wq.next())
+                _prov.insert(r.value("CCODPRO").toString().trimmed(),wq.record());
+            else
+            {
+                _haveError = true;
+                _error = wq.lastError().text();
+            }
         }
 
     }while(q.next());
@@ -859,7 +884,7 @@ void importThread::_generarCodigosTarifa()
         QString k = it.key();
         emit Progress(tr("Divisas: %1").arg(k),row);
 
-        QString des = QString("facturaplus_%1").arg(k);
+        QString des = QString("FacturaPlus_%1").arg(k);
         QString cod = QString("F_%1").arg(k).toUpper();
         cod.truncate(15);
         wq.prepare("INSERT INTO codigotarifa "
@@ -1037,7 +1062,7 @@ void importThread::_importArticulos()
         wq.bindValue(":codigo_fabricante",r.value("CREFPROV").toString().trimmed());
         wq.bindValue(":descripcion",r.value("CDETALLE").toString().trimmed());
         wq.bindValue(":descripcion_reducida",r.value("CDETALLE").toString().trimmed());
-        wq.bindValue(":id_proveedor",_prov.value(r.value("CCODPRO").toString().trimmed()));
+        wq.bindValue(":id_proveedor",_prov.value(r.value("CCODPRO").toString().trimmed()).value("id"));
         wq.bindValue(":id_familia",_fams.value(r.value("CCODFAM").toString().trimmed()));
         wq.bindValue(":tipo_iva",_getRIva(cod_iva));
         wq.bindValue(":coste",r.value("NCOSTEDIV").toString().trimmed());
@@ -1064,30 +1089,35 @@ void importThread::_importArticulos()
             QString CCodDiv = r.value("CCODDIV").toString().trimmed();
             double pvp = r.value("NPVP").toDouble();
             double base = r.value("NCOSTEDIV").toDouble();
-            double margen = pvp - base;
-            wq1.prepare(
-            "INSERT INTO `tarifas` "
-            "(`id_articulo`, `id_pais`, `id_monedas`, `margen`,"
-            "`margen_minimo`, `pvp`, `id_codigo_tarifa`)"
-            "VALUES "
-            "(:id_articulo, 1, :id_monedas, :margen, :margen_minimo, :pvp, :id_codigo_tarifa);"
-                        );
-            wq1.bindValue(":id_articulo",art);
-            wq1.bindValue(":id_monedas",_divisas.value(CCodDiv));
-            wq1.bindValue(":margen",margen);
-            wq1.bindValue(":margen_minimo",0);
-            wq1.bindValue(":pvp",pvp);
-            wq1.bindValue(":id_codigo_tarifa",_codTarifa.value(CCodDiv));
-
-            if(!wq1.exec())
+            double margen = 100-(base/pvp);
+            //double margen = pvp - base;
+            QHash<QString,int>::Iterator it;
+            for(it=_codTarifa.begin();it!=_codTarifa.end();++it)
             {
-                _haveError = true;
-                _error = wq1.lastError().text();
-                qDebug() << wq1.boundValues();
-                qDebug() << wq1.lastError().databaseText();
-                qDebug() << wq1.lastQuery();
-                qDebug() << wq1.lastError().text();
-                qDebug() << wq1.executedQuery();
+                wq1.prepare(
+                            "INSERT INTO `tarifas` "
+                            "(`id_articulo`, `id_pais`, `id_monedas`, `margen`,"
+                            "`margen_minimo`, `pvp`, `id_codigo_tarifa`)"
+                            "VALUES "
+                            "(:id_articulo, 1, :id_monedas, :margen, :margen_minimo, :pvp, :id_codigo_tarifa);"
+                            );
+                wq1.bindValue(":id_articulo",art);
+                wq1.bindValue(":id_monedas",_divisas.value(it.key()));
+                wq1.bindValue(":margen",margen);
+                wq1.bindValue(":margen_minimo",0);
+                wq1.bindValue(":pvp",pvp * _cambioDivisa.value(it.key()));
+                wq1.bindValue(":id_codigo_tarifa",_codTarifa.value(it.key()));
+
+                if(!wq1.exec())
+                {
+                    _haveError = true;
+                    _error = wq1.lastError().text();
+                    qDebug() << wq1.boundValues();
+                    qDebug() << wq1.lastError().databaseText();
+                    qDebug() << wq1.lastQuery();
+                    qDebug() << wq1.lastError().text();
+                    qDebug() << wq1.executedQuery();
+                }
             }
         }
 
@@ -1098,7 +1128,6 @@ void importThread::_importArticulos()
     _cArticulos.clear();
     _stockArticulos.clear();
     _fams.clear();
-    _prov.clear();
     _codTarifa.clear();
 }
 
@@ -1167,7 +1196,7 @@ void importThread::_importPresCli()
 
         QSqlRecord rCab = q.record();
         QSqlQuery linea(QSqlDatabase::database("dbfEditor"));
-        QString NNUMPRE = rCab.value("NNUMPRE").toString();
+        QString NNUMPRE = rCab.value("NNUMPRE").toString().trimmed();
         double totalRE = rCab.value("NTOTALREC").toDouble();
         wq.prepare("INSERT INTO `cab_pre` (`presupuesto`) VALUES (:n);");
         wq.bindValue(":n",NNUMPRE);
@@ -1500,7 +1529,7 @@ void importThread::_importPedCli()
 
         QSqlRecord rCab = q.record();
         QSqlQuery linea(QSqlDatabase::database("dbfEditor"));
-        QString NNUMPRE = rCab.value("NNUMPED").toString();
+        QString NNUMPRE = rCab.value("NNUMPED").toString().trimmed();
         double totalRE = rCab.value("NTOTALREC").toDouble();
         wq.prepare("INSERT INTO `ped_cli` (`pedido`) VALUES (:n);");
         wq.bindValue(":n",NNUMPRE);
@@ -1875,7 +1904,7 @@ void importThread::_importAlbCli()
 
         QSqlRecord rCab = q.record();
         QSqlQuery linea(QSqlDatabase::database("dbfEditor"));
-        QString NNUMPRE = rCab.value("NNUMALB").toString();
+        QString NNUMPRE = rCab.value("NNUMALB").toString().trimmed();
         double totalRE = rCab.value("NTOTALREC").toDouble();
         wq.prepare("INSERT INTO `cab_alb` (`albaran`) VALUES (:n);");
         wq.bindValue(":n",NNUMPRE);
@@ -2569,23 +2598,1094 @@ void importThread::_importFacCli()
     q.exec("DROP TABLE IF EXISTS d_Facclic");
 }
 
+void importThread::_importPedPro()
+{
+    emit Progress(tr("Abriendo Archivo: Cabecera de pedidos a proveedores"),0);
+    emit sizeOfTask(0);
+    QString file = Path()+"/Pedprot.dbf";
+    _mw->openDb(file);
+
+    emit Progress(tr("Abriendo Archivo: Lineas de pedidos a proveedores"),0);
+    QString file2 = Path()+"/Pedprol.dbf";
+    _mw->openDb(file2);
+
+    emit Progress(tr("Abriendo Archivo: Comnetarios de pedidos a proveedores"),0);
+    QString file3 = Path()+"/Pedproc.dbf";
+    _mw->openDb(file3);
+
+    QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
+    QHash<QString,QString> comenPed;
+
+    if(coment.exec("SELECT * FROM d_Pedproc"))
+    {
+        while(coment.next())
+        {
+            QString num = coment.record().value("NNUMPED").toString().trimmed();
+            QString com = coment.record().value("CCOMENT").toString().trimmed();
+            if(comenPed.contains(num))
+            {
+                comenPed[num].append("\n");
+                comenPed[num].append(com);
+            }
+            else
+            {
+                comenPed.insert(num,com);
+            }
+        }
+    }
+
+    QSqlQuery q(QSqlDatabase::database("dbfEditor"));
+    if(!q.exec("SELECT * FROM d_Pedprot"))
+    {
+        emit Error(q.lastError().text());
+        return;
+    }
+    int rows = 0;
+    while(q.next())
+        rows++;
+    emit sizeOfTask(rows);
+
+    if(rows==0)
+        return;
+    QString p = tr("Traspasando pedidos a proveedores %1/")+QString::number(rows);
+    rows = 0;
+    q.first();
+
+    QSqlQuery wq(QSqlDatabase::database("empresa"));
+    do
+    {
+        if(_hardStop)
+            return;
+        if(_haveError)
+            return;
+        rows++;
+        emit Progress(p.arg(rows),rows);
+
+        QSqlRecord rCab = q.record();
+        QSqlQuery linea(QSqlDatabase::database("dbfEditor"));
+        QString NNUMPRE = rCab.value("NNUMPED").toString().trimmed();
+        double totalRE = rCab.value("NTOTALREC").toDouble();
+
+
+        wq.prepare("INSERT INTO `ped_pro` (`pedido`) VALUES (:n);");
+        wq.bindValue(":n",NNUMPRE);
+        if(wq.exec())
+        {
+            int idCab = wq.lastInsertId().toInt();
+            linea.prepare("SELECT * FROM d_Pedprol where NNUMPED=:n");
+            linea.bindValue(":n",NNUMPRE);
+            if(linea.exec())
+            {
+                double base1 = 0;
+                double base2 = 0;
+                double base3 = 0;
+                double base4 = 0;
+
+                double importe1 = 0;
+                double importe2 = 0;
+                double importe3 = 0;
+                double importe4 = 0;
+
+                double porc_iva1 = 21;
+                double porc_iva2 = 10;
+                double porc_iva3 = 4;
+
+                double iva1 = 0;
+                double iva2 = 0;
+                double iva3 = 0;
+
+                double porc_re1 = 5.2;
+                double porc_re2 = 1.4;
+                double porc_re3 = 0.5;
+
+                double re1 = 0;
+                double re2 = 0;
+                double re3 = 0;
+
+                double totDTO = 0;
+
+                while(linea.next())
+                {
+                    QSqlRecord lRecord = linea.record();
+                    QSqlQuery wl(QSqlDatabase::database("empresa"));
+                    wl.prepare("INSERT INTO `lin_ped_pro` "
+                               "(`id_cab`, `id_articulo`, `codigo`, `cantidad`,"
+                               "`descripcion`, `precio`, `subtotal`, `porc_dto`,"
+                               "`dto`, `porc_iva`, `iva`, `porc_rec`, `rec`, `total`)"
+                               "VALUES "
+                               "(:id_cab, :id_articulo, :codigo, :cantidad,"
+                               ":descripcion, :precio, :subtotal, :porc_dto,"
+                               ":dto, :porc_iva, :iva, :porc_rec, :rec, :total)");
+                    QString codigo = lRecord.value("CREF").toString().trimmed();
+
+                    double totBruto = lRecord.value("NTOTBRUTO").toDouble();
+                    double dto_porc = lRecord.value("NDTO").toDouble();
+                    double dto = totBruto * (dto_porc / 100.0);
+                    totDTO += dto;
+                    double porc_iva = lRecord.value("NIVASERV").toDouble();
+                    double iva = totBruto * (porc_iva/ 100.0);
+                    double porc_re = 0;
+                    double rec = 0;
+
+                    if(totalRE > 0)
+                    {
+                        //21 = 5,2% 10 = 1,4%  4 = 0,5%
+                        //18 = 4%    8 = 1%    4 = 0,5%
+                        //16 = 4%    7 = 1%    4 = 0,5%
+                        if(porc_iva == 21.00)
+                            porc_re = 5.2;
+                        else if(porc_iva == 10.0)
+                            porc_re = 1.4;
+                        else if(porc_iva == 4.0)
+                            porc_re = 0.5;
+                        else if(porc_iva == 18.0)
+                            porc_re = 4.0;
+                        else if(porc_iva == 8.0)
+                            porc_re = 1.0;
+                        else if(porc_iva == 16.0)
+                            porc_re = 4.0;
+                        else
+                            porc_re = 1.0;
+
+                        rec = totBruto * (porc_re/ 100);
+                    }
+
+                    if(porc_iva > 15)
+                    {
+                        porc_iva1 = porc_iva;
+                        porc_re1 = porc_re;
+
+                        importe1 += totBruto;
+                        base1 += totBruto;
+                        base1 -= dto;
+                        iva1 += iva;
+                        re1 += rec;
+                    }
+                    else if(porc_iva >7)
+                    {
+                        porc_iva2 = porc_iva;
+                        porc_re2 = porc_re;
+
+                        importe2 += totBruto;
+                        base2 += totBruto;
+                        base2 -= dto;
+                        iva2 += iva;
+                        re2 += rec;
+                    }
+                    else if(porc_iva >3)
+                    {
+                        porc_iva3 = porc_iva;
+                        porc_re3 = porc_re;
+
+                        importe3 += totBruto;
+                        base3 += totBruto;
+                        base3 -= dto;
+                        iva3 += iva;
+                        re3 += rec;
+                    }
+                    else
+                    {
+                        importe4 += totBruto;
+                        base4 += totBruto;
+                        base4 -= dto;
+                    }
+                    wl.bindValue(":id_cab",idCab);
+                    wl.bindValue(":id_articulo",_articulos.value(codigo));
+                    wl.bindValue(":codigo",codigo);
+                    wl.bindValue(":cantidad",lRecord.value("NCANPED").toDouble());
+                    wl.bindValue(":descripcion",lRecord.value("CDETALLE"));
+                    wl.bindValue(":precio",lRecord.value("NPREDIV"));
+
+                    wl.bindValue(":subtotal",totBruto);
+                    wl.bindValue(":porc_dto",dto_porc);
+                    wl.bindValue(":dto",dto);
+                    wl.bindValue(":porc_iva",porc_iva);
+                    wl.bindValue(":iva",iva);
+
+                    wl.bindValue(":porc_rec",porc_re);
+                    wl.bindValue(":rec",rec);
+                    wl.bindValue(":total",lRecord.value("NTOTLINEA").toDouble());
+
+                    if(!wl.exec())
+                    {
+                        _haveError = true;
+                        _error = wl.lastError().text();
+                    }
+                }
+/* Faltan en FP
+ *`recepcion`,
+ *`enviado`,
+ *`recibido`,
+ *`recibido_completo`,
+ *`genero_pendiente`,
+ *`traspasado`,
+ *`pedido_cliente`,
+ *`nombre_cliente`,
+ *`horario_activo`,
+ *`porc_rec1`, `porc_rec2`, `porc_rec3`, `porc_rec4`,
+ *`rec1`, `rec2`, `rec3`, `rec4`,
+ *`gasto_to_coste`,
+ *`recargo_equivalencia`)
+*/
+                QSqlRecord rProv = _prov.value(rCab.value("CCODPRO").toString().trimmed());
+                QHash<QString,QVariant> v;
+                v["ejercicio"]=rCab.value("DFECPED").toDate().year();
+                v["fecha"]= rCab.value("DFECPED").toDate() ;
+                v["id_proveedor"]= rProv.value("id").toInt();
+                v["codigo_proveedor"]= rProv.value("codigo").toString();
+                v["proveedor"]= rProv.value("proveedor").toString();
+                v["direccion1"]= rProv.value("direccion1").toString();
+                v["direccion2"]= rProv.value("direccion2").toString();
+                v["cp"]= rProv.value("cp").toString();
+                v["telefono"]=rProv.value("telefono1").toString();
+                v["fax"]=rProv.value("fax").toString();
+                v["movil"]=rProv.value("movl").toString();
+                v["poblacion"]= rProv.value("poblacion").toString();
+                v["provincia"]= rProv.value("provincia").toString();
+                v["id_pais"]= rProv.value("id_pais").toInt();
+                v["cif_nif"]= rProv.value("cif").toString();
+                v["base_total"]= base1+base2+base3+base4;
+                v["subtotal"]= importe1+importe2+importe3+importe4;
+                v["dto"]= totDTO;
+                v["rec_total"]= 0;
+                v["total"]= base1+base2+base3+base4+iva1+iva2+iva3;
+                v["id_forma_pago"]= _fpago.value(rCab.value("CCODPAGO").toString().trimmed());
+                v["comentario"]= comenPed.value(rCab.value("NNUMPED").toString().trimmed());
+                v["base1"]= base1;
+                v["base2"]= base2;
+                v["base3"]= base3;
+                v["base4"]= base4;
+                v["porc_iva1"]= porc_iva1;
+                v["porc_iva2"]= porc_iva2;
+                v["porc_iva3"]= porc_iva3;
+                v["porc_iva4"]= 0;
+                v["iva1"]= iva1;
+                v["iva2"]= iva2;
+                v["iva3"]= iva3;
+                v["iva4"]= 0;
+                v["total1"]= base1 + iva1 + re1;
+                v["total2"]= base1 + iva1 + re1;
+                v["total3"]= base1 + iva1 + re1;
+                v["total4"]= base4;
+                v["impreso"]= rCab.value("LIMPRESO").toBool();
+                v["desc_gasto1"]= "Portes";
+                v["imp_gasto1"]= rCab.value("NPORTES").toDouble();
+
+                QString id = QString("id = %1").arg(idCab);
+                QString error;
+                if(!SqlUpdate(v,"ped_pro",QSqlDatabase::database("empresa"),id,error))
+                {
+                    _haveError = true;
+                    _error = error;
+                    qDebug() << error;
+                }
+            }
+            else
+            {
+                _haveError = true;
+                _error = linea.lastError().text();
+            }
+        }
+        else
+        {
+            _haveError = true;
+            _error = wq.lastError().text();
+        }
+    }while(q.next());
+
+    emit sizeOfTask(0);
+    emit Progress(tr("Borrando datos temporales"),0);
+    q.exec("DROP TABLE IF EXISTS d_Pedprot");
+    q.exec("DROP TABLE IF EXISTS d_Pedprol");
+    q.exec("DROP TABLE IF EXISTS d_Pedproc");
+}
+
+void importThread::_importAlbPro()
+{
+    emit Progress(tr("Abriendo Archivo: Cabecera de albaranes de proveedores"),0);
+    emit sizeOfTask(0);
+    QString file = Path()+"/Albprot.dbf";
+    _mw->openDb(file);
+
+    emit Progress(tr("Abriendo Archivo: Lineas de albaranes de proveedores"),0);
+    QString file2 = Path()+"/Albprol.dbf";
+    _mw->openDb(file2);
+
+    emit Progress(tr("Abriendo Archivo: Comnetarios de albaranes de proveedores"),0);
+    QString file3 = Path()+"/Albproc.dbf";
+    _mw->openDb(file3);
+
+    QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
+    QHash<QString,QString> comenPed;
+
+    if(coment.exec("SELECT * FROM d_Albproc"))
+    {
+        while(coment.next())
+        {
+            QString num = coment.record().value("NNUMALB").toString().trimmed();
+            QString com = coment.record().value("CCOMENT").toString().trimmed();
+            if(comenPed.contains(num))
+            {
+                comenPed[num].append("\n");
+                comenPed[num].append(com);
+            }
+            else
+            {
+                comenPed.insert(num,com);
+            }
+        }
+    }
+
+    QSqlQuery q(QSqlDatabase::database("dbfEditor"));
+    if(!q.exec("SELECT * FROM d_Albprot"))
+    {
+        emit Error(q.lastError().text());
+        return;
+    }
+    int rows = 0;
+    while(q.next())
+        rows++;
+    emit sizeOfTask(rows);
+
+    if(rows==0)
+        return;
+    QString p = tr("Traspasando albaranes de proveedores %1/")+QString::number(rows);
+    rows = 0;
+    q.first();
+
+    QSqlQuery wq(QSqlDatabase::database("empresa"));
+    do
+    {
+        if(_hardStop)
+            return;
+        if(_haveError)
+            return;
+        rows++;
+        emit Progress(p.arg(rows),rows);
+
+        QSqlRecord rCab = q.record();
+        QSqlQuery linea(QSqlDatabase::database("dbfEditor"));
+        QString NNUMPRE = rCab.value("NNUMALB").toString().trimmed();
+        double totalRE = rCab.value("NTOTALREC").toDouble();
+
+
+        wq.prepare("INSERT INTO `alb_pro` (`albaran`) VALUES (:n);");
+        wq.bindValue(":n",NNUMPRE);
+        if(wq.exec())
+        {
+            int idCab = wq.lastInsertId().toInt();
+            linea.prepare("SELECT * FROM d_Albprol where NNUMALB=:n");
+            linea.bindValue(":n",NNUMPRE);
+            if(linea.exec())
+            {
+                double base1 = 0;
+                double base2 = 0;
+                double base3 = 0;
+                double base4 = 0;
+
+                double importe1 = 0;
+                double importe2 = 0;
+                double importe3 = 0;
+                double importe4 = 0;
+
+                double porc_iva1 = 21;
+                double porc_iva2 = 10;
+                double porc_iva3 = 4;
+
+                double iva1 = 0;
+                double iva2 = 0;
+                double iva3 = 0;
+
+                double porc_re1 = 5.2;
+                double porc_re2 = 1.4;
+                double porc_re3 = 0.5;
+
+                double re1 = 0;
+                double re2 = 0;
+                double re3 = 0;
+
+                double totDTO = 0;
+
+                while(linea.next())
+                {
+                    QSqlRecord lRecord = linea.record();
+                    QSqlQuery wl(QSqlDatabase::database("empresa"));
+                    wl.prepare("INSERT INTO `lin_alb_pro` "
+                               "(`id_cab`, `id_articulo`, `codigo`, `cantidad`,"
+                               "`descripcion`, `precio`, `subtotal`, `porc_dto`,"
+                               "`dto`, `porc_iva`, `iva`, `porc_rec`, `rec`, `total`)"
+                               "VALUES "
+                               "(:id_cab, :id_articulo, :codigo, :cantidad,"
+                               ":descripcion, :precio, :subtotal, :porc_dto,"
+                               ":dto, :porc_iva, :iva, :porc_rec, :rec, :total)");
+                    QString codigo = lRecord.value("CREF").toString().trimmed();
+
+                    double totBruto = lRecord.value("NTOTBRUTO").toDouble();
+                    double dto_porc = lRecord.value("NDTO").toDouble();
+                    double dto = totBruto * (dto_porc / 100.0);
+                    totDTO += dto;
+                    double porc_iva = lRecord.value("NIVASERV").toDouble();
+                    double iva = totBruto * (porc_iva/ 100.0);
+                    double porc_re = 0;
+                    double rec = 0;
+
+                    if(totalRE > 0)
+                    {
+                        //21 = 5,2% 10 = 1,4%  4 = 0,5%
+                        //18 = 4%    8 = 1%    4 = 0,5%
+                        //16 = 4%    7 = 1%    4 = 0,5%
+                        if(porc_iva == 21.00)
+                            porc_re = 5.2;
+                        else if(porc_iva == 10.0)
+                            porc_re = 1.4;
+                        else if(porc_iva == 4.0)
+                            porc_re = 0.5;
+                        else if(porc_iva == 18.0)
+                            porc_re = 4.0;
+                        else if(porc_iva == 8.0)
+                            porc_re = 1.0;
+                        else if(porc_iva == 16.0)
+                            porc_re = 4.0;
+                        else
+                            porc_re = 1.0;
+
+                        rec = totBruto * (porc_re/ 100);
+                    }
+
+                    if(porc_iva > 15)
+                    {
+                        porc_iva1 = porc_iva;
+                        porc_re1 = porc_re;
+
+                        importe1 += totBruto;
+                        base1 += totBruto;
+                        base1 -= dto;
+                        iva1 += iva;
+                        re1 += rec;
+                    }
+                    else if(porc_iva >7)
+                    {
+                        porc_iva2 = porc_iva;
+                        porc_re2 = porc_re;
+
+                        importe2 += totBruto;
+                        base2 += totBruto;
+                        base2 -= dto;
+                        iva2 += iva;
+                        re2 += rec;
+                    }
+                    else if(porc_iva >3)
+                    {
+                        porc_iva3 = porc_iva;
+                        porc_re3 = porc_re;
+
+                        importe3 += totBruto;
+                        base3 += totBruto;
+                        base3 -= dto;
+                        iva3 += iva;
+                        re3 += rec;
+                    }
+                    else
+                    {
+                        importe4 += totBruto;
+                        base4 += totBruto;
+                        base4 -= dto;
+                    }
+                    wl.bindValue(":id_cab",idCab);
+                    wl.bindValue(":id_articulo",_articulos.value(codigo));
+                    wl.bindValue(":codigo",codigo);
+                    wl.bindValue(":cantidad",lRecord.value("NCANENT").toDouble());
+                    wl.bindValue(":descripcion",lRecord.value("CDETALLE"));
+                    wl.bindValue(":precio",lRecord.value("NPREDIV"));
+
+                    wl.bindValue(":subtotal",totBruto);
+                    wl.bindValue(":porc_dto",dto_porc);
+                    wl.bindValue(":dto",dto);
+                    wl.bindValue(":porc_iva",porc_iva);
+                    wl.bindValue(":iva",iva);
+
+                    wl.bindValue(":porc_rec",porc_re);
+                    wl.bindValue(":rec",rec);
+                    wl.bindValue(":total",lRecord.value("NTOTLINEA").toDouble());
+
+                    if(!wl.exec())
+                    {
+                        _haveError = true;
+                        _error = wl.lastError().text();
+                    }
+                }
+
+/*Faltan en FP:
+ *¿`recargo_equivalencia`??,
+ * `porc_rec1`, `porc_rec2`, `porc_rec3`, `porc_rec4`,
+ * `rec1`, `rec2`, `rec3`, `rec4`, `importe_rec_total`,
+*/
+
+                QSqlRecord rProv = _prov.value(rCab.value("CCODPRO").toString().trimmed());
+
+                QHash<QString,QVariant> v;
+                v["ejercicio"]=rCab.value("DFECALB").toDate().year();
+                v["fecha"]= rCab.value("DFECALB").toDate() ;
+                v["id_proveedor"]= rProv.value("id").toInt();
+                v["codigo_proveedor"]= rProv.value("codigo").toString();
+                v["proveedor"]= rProv.value("proveedor").toString();
+                v["direccion1"]= rProv.value("direccion1").toString();
+                v["direccion2"]= rProv.value("direccion2").toString();
+                v["cp"]= rProv.value("cp").toString();
+                v["poblacion"]= rProv.value("poblacion").toString();
+                v["provincia"]= rProv.value("provincia").toString();
+                v["telefono"]=rProv.value("telefono1").toString();
+                v["fax"]=rProv.value("fax").toString();
+                v["movil"]=rProv.value("movil").toString();
+                v["id_pais"]= rProv.value("id_pais").toInt();
+                v["cif_proveedor"]= rProv.value("cif").toString();
+                v["base_total"]= base1+base2+base3+base4;
+                v["subtotal"]= importe1+importe2+importe3+importe4;
+                v["dto"]= totDTO;
+                v["importe_rec_total"]= 0;
+                v["total"]= base1+base2+base3+base4+iva1+iva2+iva3;
+                v["id_forma_pago"]= _fpago.value(rCab.value("CCODPAGO").toString().trimmed());
+                v["comentario"]= comenPed.value(rCab.value("NNUMALB").toString().trimmed());
+                v["base1"]= base1;
+                v["base2"]= base2;
+                v["base3"]= base3;
+                v["base4"]= base4;
+                v["porc_iva1"]= porc_iva1;
+                v["porc_iva2"]= porc_iva2;
+                v["porc_iva3"]= porc_iva3;
+                v["porc_iva4"]= 0;
+                v["iva1"]= iva1;
+                v["iva2"]= iva2;
+                v["iva3"]= iva3;
+                v["iva4"]= 0;
+                v["iva_total"] = iva1+iva2+iva3;
+                v["total1"]= base1 + iva1 + re1;
+                v["total2"]= base1 + iva1 + re1;
+                v["total3"]= base1 + iva1 + re1;
+                v["total4"]= base4;
+                v["factura"] = rCab.value("CFACTURA").toString().trimmed();
+                v["pedido"] = rCab.value("NNUMPED").toString().trimmed();
+                v["impreso"]= rCab.value("LIMPRESO").toBool();
+                v["desc_gasto1"]= "Portes";
+                v["imp_gasto1"]= rCab.value("NPORTES").toDouble();
+
+                QString id = QString("`id` = %1").arg(idCab);
+                QString error;
+                if(!SqlUpdate(v,"alb_pro",QSqlDatabase::database("empresa"),id,error))
+                {
+                    _haveError = true;
+                    _error = error;
+                    qDebug() << error;
+                }
+            }
+            else
+            {
+                _haveError = true;
+                _error = linea.lastError().text();
+            }
+        }
+        else
+        {
+            _haveError = true;
+            _error = wq.lastError().text();
+        }
+    }while(q.next());
+
+    emit sizeOfTask(0);
+    emit Progress(tr("Borrando datos temporales"),0);
+    q.exec("DROP TABLE IF EXISTS d_Albprot");
+    q.exec("DROP TABLE IF EXISTS d_Albprol");
+    q.exec("DROP TABLE IF EXISTS d_Albproc");
+}
+
+void importThread::_importFacPro()
+{
+    emit Progress(tr("Abriendo Archivo: Cabecera de facturas de proveedores"),0);
+    emit sizeOfTask(0);
+    QString file = Path()+"/Facprot.dbf";
+    _mw->openDb(file);
+
+    emit Progress(tr("Abriendo Archivo: Lineas de facturas de proveedores"),0);
+    QString file2 = Path()+"/Facprol.dbf";
+    _mw->openDb(file2);
+
+    emit Progress(tr("Abriendo Archivo: Comnetarios de facturas de proveedores"),0);
+    QString file3 = Path()+"/Facproc.dbf";
+    _mw->openDb(file3);
+
+    QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
+    QHash<QString,QString> comenPed;
+
+    if(coment.exec("SELECT * FROM d_Facproc"))
+    {
+        while(coment.next())
+        {
+            QString num = coment.record().value("NNUMFAC").toString().trimmed();
+            QString serie = coment.record().value("CSERIE").toString().trimmed();
+            num.prepend(serie);
+            QString com = coment.record().value("CCOMENT").toString().trimmed();
+            if(comenPed.contains(num))
+            {
+                comenPed[num].append("\n");
+                comenPed[num].append(com);
+            }
+            else
+            {
+                comenPed.insert(num,com);
+            }
+        }
+    }
+
+    QSqlQuery q(QSqlDatabase::database("dbfEditor"));
+    if(!q.exec("SELECT * FROM d_Facprot"))
+    {
+        emit Error(q.lastError().text());
+        return;
+    }
+    int rows = 0;
+    while(q.next())
+        rows++;
+    emit sizeOfTask(rows);
+
+    if(rows==0)
+        return;
+    QString p = tr("Traspasando facturas de proveedores %1/")+QString::number(rows);
+    rows = 0;
+    q.first();
+
+    QSqlQuery wq(QSqlDatabase::database("empresa"));
+    do
+    {
+        if(_hardStop)
+            return;
+        if(_haveError)
+            return;
+        rows++;
+        emit Progress(p.arg(rows),rows);
+
+        QSqlRecord rCab = q.record();
+        QSqlQuery linea(QSqlDatabase::database("dbfEditor"));
+        QString NNUMPRE = rCab.value("NNUMFAC").toString().trimmed();
+        QString serie = rCab.value("CSERIE").toString().trimmed();
+        double totalRE = rCab.value("NTOTALREC").toDouble();
+
+        QString comentKey = serie + NNUMPRE;
+
+
+        wq.prepare("INSERT INTO `fac_pro` (`factura`) VALUES (:n);");
+        //wq.bindValue(":s",serie);
+        wq.bindValue(":n",NNUMPRE);
+        if(wq.exec())
+        {
+            int idCab = wq.lastInsertId().toInt();
+            linea.prepare("SELECT * FROM d_Facprol where NNUMALB=:n");
+            linea.bindValue(":n",rCab.value("CSUFAC").toString().trimmed());
+            if(linea.exec())
+            {
+                double base1 = 0;
+                double base2 = 0;
+                double base3 = 0;
+                double base4 = 0;
+
+                double importe1 = 0;
+                double importe2 = 0;
+                double importe3 = 0;
+                double importe4 = 0;
+
+                double porc_iva1 = 21;
+                double porc_iva2 = 10;
+                double porc_iva3 = 4;
+
+                double iva1 = 0;
+                double iva2 = 0;
+                double iva3 = 0;
+
+                double porc_re1 = 5.2;
+                double porc_re2 = 1.4;
+                double porc_re3 = 0.5;
+
+                double re1 = 0;
+                double re2 = 0;
+                double re3 = 0;
+
+                double totDTO = 0;
+
+                while(linea.next())
+                {
+                    QSqlRecord lRecord = linea.record();
+                    QSqlQuery wl(QSqlDatabase::database("empresa"));
+                    wl.prepare("INSERT INTO `lin_alb_pro` "
+                               "(`id_cab`, `id_articulo`, `codigo`, `cantidad`,"
+                               "`descripcion`, `precio`, `subtotal`, `porc_dto`,"
+                               "`dto`, `porc_iva`, `iva`, `porc_rec`, `rec`, `total`)"
+                               "VALUES "
+                               "(:id_cab, :id_articulo, :codigo, :cantidad,"
+                               ":descripcion, :precio, :subtotal, :porc_dto,"
+                               ":dto, :porc_iva, :iva, :porc_rec, :rec, :total)");
+                    QString codigo = lRecord.value("CREF").toString().trimmed();
+
+                    double totBruto = lRecord.value("NTOTBRUTO").toDouble();
+                    double dto_porc = lRecord.value("NDTO").toDouble();
+                    double dto = totBruto * (dto_porc / 100.0);
+                    totDTO += dto;
+                    double porc_iva = lRecord.value("NIVA").toDouble();
+                    double iva = totBruto * (porc_iva/ 100.0);
+                    double porc_re = 0;
+                    double rec = 0;
+
+                    if(totalRE > 0)
+                    {
+                        //21 = 5,2% 10 = 1,4%  4 = 0,5%
+                        //18 = 4%    8 = 1%    4 = 0,5%
+                        //16 = 4%    7 = 1%    4 = 0,5%
+                        if(porc_iva == 21.00)
+                            porc_re = 5.2;
+                        else if(porc_iva == 10.0)
+                            porc_re = 1.4;
+                        else if(porc_iva == 4.0)
+                            porc_re = 0.5;
+                        else if(porc_iva == 18.0)
+                            porc_re = 4.0;
+                        else if(porc_iva == 8.0)
+                            porc_re = 1.0;
+                        else if(porc_iva == 16.0)
+                            porc_re = 4.0;
+                        else
+                            porc_re = 1.0;
+
+                        rec = totBruto * (porc_re/ 100);
+                    }
+
+                    if(porc_iva > 15)
+                    {
+                        porc_iva1 = porc_iva;
+                        porc_re1 = porc_re;
+
+                        importe1 += totBruto;
+                        base1 += totBruto;
+                        base1 -= dto;
+                        iva1 += iva;
+                        re1 += rec;
+                    }
+                    else if(porc_iva >7)
+                    {
+                        porc_iva2 = porc_iva;
+                        porc_re2 = porc_re;
+
+                        importe2 += totBruto;
+                        base2 += totBruto;
+                        base2 -= dto;
+                        iva2 += iva;
+                        re2 += rec;
+                    }
+                    else if(porc_iva >3)
+                    {
+                        porc_iva3 = porc_iva;
+                        porc_re3 = porc_re;
+
+                        importe3 += totBruto;
+                        base3 += totBruto;
+                        base3 -= dto;
+                        iva3 += iva;
+                        re3 += rec;
+                    }
+                    else
+                    {
+                        importe4 += totBruto;
+                        base4 += totBruto;
+                        base4 -= dto;
+                    }
+                    wl.bindValue(":id_cab",idCab);
+                    wl.bindValue(":id_articulo",_articulos.value(codigo));
+                    wl.bindValue(":codigo",codigo);
+                    wl.bindValue(":cantidad",lRecord.value("NCANENT").toDouble());
+                    wl.bindValue(":descripcion",lRecord.value("CDETALLE"));
+                    wl.bindValue(":precio",lRecord.value("NPREUNIT"));
+
+                    wl.bindValue(":subtotal",totBruto);
+                    wl.bindValue(":porc_dto",dto_porc);
+                    wl.bindValue(":dto",dto);
+                    wl.bindValue(":porc_iva",porc_iva);
+                    wl.bindValue(":iva",iva);
+
+                    wl.bindValue(":porc_rec",porc_re);
+                    wl.bindValue(":rec",rec);
+                    wl.bindValue(":total",lRecord.value("NTOTLINEA").toDouble());
+
+                    if(!wl.exec())
+                    {
+                        _haveError = true;
+                        _error = wl.lastError().text();
+                    }
+                }
+
+/*Falta en FP:
+ *`fecha_recepcion`,
+ *`pedido`,
+ *`retencion_irpf`,
+ *`¿recargo_equivalencia ¿FLOAT??`,
+ *`total_retencion`,
+ *`importe_pagado_total`,
+ *`id_tipo_gasto`,
+ *`pagado`,
+ *`importe_deuda_pendiente`,
+ *`gasto_to_coste`
+ */
+
+                QSqlRecord rProv = _prov.value(rCab.value("CCODPRO").toString().trimmed());
+                QHash<QString,QVariant> v;
+                v["ejercicio"] = rCab.value("DFECFAC").toDate().year() ;
+                v["fecha"]= rCab.value("DFECFAC").toDate() ;
+                v["id_proveedor"]= rProv.value("id").toInt();
+                v["codigo_proveedor"]= rProv.value("codigo").toString();
+                v["proveedor"]= rProv.value("proveedor").toString();
+                v["direccion1"]= rProv.value("direccion1").toString();
+                v["direccion2"]= rProv.value("direccion2").toString();
+                v["cp"]= rProv.value("cp").toString();
+                v["poblacion"]= rProv.value("poblacion").toString();
+                v["provincia"]= rProv.value("provincia").toString();
+                v["id_pais"]= rProv.value("id_pais").toInt();
+                v["telefono"]=rProv.value("telefono1").toString();
+                v["fax"]=rProv.value("fax").toString();
+                v["movil"]=rProv.value("movil").toString();
+                v["cif_proveedor"]= rProv.value("cif").toString();                
+                v["subtotal"]= importe1+importe2+importe3+importe4;
+                v["id_forma_pago"]= _fpago.value(rCab.value("CCODPAGO").toString().trimmed());
+                v["forma_pago"] = _sFPago.value(rCab.value("CCODPAGO").toString().trimmed());
+                v["comentario"]= comenPed.value(comentKey);
+                v["base1"]= base1;
+                v["base2"]= base2;
+                v["base3"]= base3;
+                v["base4"]= base4;
+                v["porc_iva1"]= porc_iva1;
+                v["porc_iva2"]= porc_iva2;
+                v["porc_iva3"]= porc_iva3;
+                v["porc_iva4"]= 0;
+                v["iva1"]= iva1;
+                v["iva2"]= iva2;
+                v["iva3"]= iva3;
+                v["iva4"]= 0;
+                v["porc_rec1"] = porc_re1;
+                v["porc_rec2"] = porc_re2;
+                v["porc_rec3"] = porc_re3;
+                v["porc_rec4"] = 0;
+                v["rec1"] = re1;
+                v["rec2"] = re2;
+                v["rec3"] = re3;
+                v["rec4"] = 0;
+                v["total1"]= base1 + iva1 + re1;
+                v["total2"]= base1 + iva1 + re1;
+                v["total3"]= base1 + iva1 + re1;
+                v["total4"]= base4;
+                v["total_base"]= base1+base2+base3+base4;
+                v["total_iva"]= iva1+iva2+iva3;
+                v["total_recargo"]= re1+re2+re3;
+                v["total"]= base1+base2+base3+base4+iva1+iva2+iva3;
+                v["impreso"]= rCab.value("LIMPRESO").toBool();
+                v["contabilizada"] =  rCab.value("LCONTAB").toBool();
+                v["desc_gasto1"]= "Portes";
+                v["imp_gasto1"]= rCab.value("NPORTES").toDouble();
+                v["albaran"]=rCab.value("NNUMALB").toString();
+                v["total_dto"]= totDTO;                
+                double dto = (100.0 * totDTO) / (base1+base2+base3+base4+iva1+iva2+iva3);
+                v["dto"] = dto;
+               //if(!updateCab.exec())
+                QString id = QString("id = %1").arg(idCab);
+                QString error;
+                if(!SqlUpdate(v,"fac_pro",QSqlDatabase::database("empresa"),id,error))
+                {
+                    _haveError = true;
+                    _error = error;
+                    qDebug() << error;
+                }
+            }
+            else
+            {
+                _haveError = true;
+                _error = linea.lastError().text();
+            }
+        }
+        else
+        {
+            _haveError = true;
+            _error = wq.lastError().text();
+        }
+    }while(q.next());
+
+    emit sizeOfTask(0);
+    emit Progress(tr("Borrando datos temporales"),0);
+    q.exec("DROP TABLE IF EXISTS d_Facprot");
+    q.exec("DROP TABLE IF EXISTS d_Facprol");
+    q.exec("DROP TABLE IF EXISTS d_Albproc");
+}
+
+void importThread::_importPlan()
+{
+    emit Progress(tr("Abriendo Archivo: Plan general"),0);
+    emit sizeOfTask(0);
+    QString file = PathConta()+"/SubCta.dbf";
+    _mw->openDb(file);
+
+    QSqlQuery q(QSqlDatabase::database("dbfEditor"));
+    if(!q.exec("SELECT * FROM d_SubCta"))
+    {
+        emit Error(q.lastError().text());
+        return;
+    }
+    int rows = 0;
+    while(q.next())
+        rows++;
+    emit sizeOfTask(rows);
+
+    if(rows==0)
+        return;
+
+    QSqlQuery wq(QSqlDatabase::database("conta"));
+    QString error;
+    rows = 0;
+    q.first();
+
+    do {
+        rows++;
+        emit Progress("Importando plan general",rows);
+        QSqlRecord r = q.record();
+
+        QHash<QString,QVariant> v;
+        v["codigo_cta"]= r.value("COD").toString().trimmed();
+        v["descripcion"]= r.value("TITULO").toString().trimmed();
+        //v["activo"]= ;
+        v["saldo"]= 0;
+        v["cif_nif"]= r.value("NIF").toString().trimmed();
+        v["saldo_debe"]= 0;
+        v["saldo_haber"]= 0;
+        v["direccion"]= r.value("DOMICILIO").toString().trimmed();
+        v["cp"]= r.value("CODPOSTAL").toString().trimmed();
+        v["poblacion"]= r.value("POBLACION").toString().trimmed();
+        v["provincia"]= r.value("PROVINCIA").toString().trimmed();
+
+        int id = SqlInsert(v,"plan_general",QSqlDatabase::database("conta"),error);
+        if(id >= 0)
+        {
+            wq.prepare("Select * from plan_general Where id=:id");
+            wq.bindValue(":id",id);
+            if(wq.exec())
+            {
+                if(wq.next())
+                    _cuentas.insert(r.value("COD").toString().trimmed(),wq.record());
+            }
+            else
+            {
+                _haveError = true;
+                _error = wq.lastError().text();
+            }
+        }
+        else
+        {
+            _haveError = true;
+            _error = wq.lastError().text();
+        }
+
+    } while (q.next());
+
+
+    emit Progress(tr("Borrando datos temporales"),0);
+    q.exec("DROP TABLE IF EXISTS d_SubCta");
+}
+
+void importThread::_importDiario()
+{
+    emit Progress(tr("Abriendo Archivo: Diario"),0);
+    emit sizeOfTask(0);
+    QString file = PathConta()+"/Diario.dbf";
+    _mw->openDb(file);
+
+    QSqlQuery q(QSqlDatabase::database("dbfEditor"));
+    if(!q.exec("SELECT * FROM d_Diario"))
+    {
+        emit Error(q.lastError().text());
+        return;
+    }
+    int rows = 0;
+    while(q.next())
+        rows++;
+    emit sizeOfTask(rows);
+
+    if(rows==0)
+        return;
+
+    QHash <int,int> _asientos;
+    QString error;
+    q.first();
+    rows=0;
+    do {
+        rows++;
+        emit Progress("Importando plan general",rows);
+        QSqlRecord r = q.record();
+        QHash<QString,QVariant> v;
+        int nAsiento;
+        if(!_asientos.contains(r.value("ASIEN").toInt()))
+            _asientos.insert(r.value("ASIEN").toInt(),1);
+        else
+            _asientos[r.value("ASIEN").toInt()]++;
+
+        nAsiento = _asientos.value(r.value("ASIEN").toInt());
+
+     //   v["id_documento"]= ;
+        v["cuenta_d"]= r.value("SUBCTA").toString().trimmed();
+        v["descripcion_d"]= _cuentas.value(r.value("SUBCTA").toString().trimmed()).value("descripcion");
+        v["cuenta_h"]= r.value("CONTRA").toString().trimmed();
+        v["descripcion_h"]= _cuentas.value(r.value("CONTRA").toString().trimmed()).value("descripcion");
+        v["importe_d"]= r.value("EURODEBE").toDouble();
+        v["importe_h"]= r.value("EUROHABER").toDouble();
+        v["asiento"]= r.value("ASIEN").toInt();
+        v["id_cuenta_d"]= _cuentas.value(r.value("SUBCTA").toString().trimmed()).value("id");
+        v["id_cuenta_h"]= _cuentas.value(r.value("CONTRA").toString().trimmed()).value("id");
+        v["fecha_asiento"]= r.value("FECHA").toDate();
+        v["pos_en_asiento"]= nAsiento;
+        v["comentario_d"]= r.value("CONCEPTO").toString().trimmed();
+       // v["comentario_h"]= ;
+
+        int id = SqlInsert(v,"diario",QSqlDatabase::database("conta"),error);
+        if(id<0)
+        {
+            _haveError = true;
+            _error = error;
+        }
+    } while (q.next());
+
+
+
+
+    emit Progress(tr("Borrando datos temporales"),0);
+    q.exec("DROP TABLE IF EXISTS d_Diario");
+}
+
 void importThread::run()
 {
     _checkIva();
-    if(!_hardStop && !_haveError){ _importFormPago(); }
-    if(!_hardStop && !_haveError){ _importClients();  }
-    if(!_hardStop && !_haveError){ _importProv();     }
+    _updateDivisas();
+//    if(!_hardStop && !_haveError){ _importFormPago(); }
+//    if(!_hardStop && !_haveError){ _importClients();  }
+//    if(!_hardStop && !_haveError){ _importProv();     }
     if(!_hardStop && !_haveError){ _importArticulos();}
+
     if(!_hardStop && !_haveError){ _importPresCli();  }
     if(!_hardStop && !_haveError){ _importPedCli();   }
     if(!_hardStop && !_haveError){ _importAlbCli();   }
     if(!_hardStop && !_haveError){ _importFacCli();   }
 
+    if(!_hardStop && !_haveError){ _importPedPro();   }
+    if(!_hardStop && !_haveError){ _importAlbPro();   }
+    if(!_hardStop && !_haveError){ _importFacPro();   }
+
+    if(!_hardStop && !_haveError){ _importPlan();   }
+    if(!_hardStop && !_haveError){ _importDiario();   }
+
     if(_haveError && _error!="")
         emit Error(_error);
     //Reset vars after end
-    emit sizeOfTask(1);
-    emit Progress(tr("¡Terminado!"),1);
+    emit sizeOfTask(0);
+    emit Progress(tr("Terminando..."),0);
     _hardStop  = false;
     _haveError = false;
     _error = "";
@@ -2776,6 +3876,40 @@ void importThread::setcreateNewGroup(bool arg) {
     }
 }
 
+void importThread::cambioReplyBlock(QNetworkReply *reply)
+{
+    reply->deleteLater();
+    if(reply->error() == QNetworkReply::NoError)
+        {
+            // Get the http status code
+            int v = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            if (v >= 200 && v < 300) // Success
+            {
+                // Here we got the final reply
+                //QString replyText = reply->readAll();
+                _cambio = readCambioBlock(reply->readAll());
+                _block = false;
+            }
+            else if (v >= 300 && v < 400) // Redirection
+            {
+
+                // Get the redirection url
+                QUrl newUrl = reply->attribute(QNetworkRequest::RedirectionTargetAttribute).toUrl();
+                // Because the redirection url can be relative,
+                // we have to use the previous one to resolve it
+                newUrl = reply->url().resolved(newUrl);
+
+                QNetworkAccessManager *manager = reply->manager();
+                connect(manager,SIGNAL(sslErrors(QNetworkReply*,QList<QSslError>)),this,SLOT(onIgnoreSSLErrors(QNetworkReply*,QList<QSslError>)));
+                connect(manager,SIGNAL(finished(QNetworkReply*)),this,SLOT(cambioReplyBlock(QNetworkReply*)));
+                QNetworkRequest redirection(newUrl);
+                manager->get(redirection);
+                return; // to keep the manager for the next request
+            }
+        }
+    reply->manager()->deleteLater();
+}
+
 QHash<QString, int> importThread::ivaRelation() const
 {
     return _ivaRelation;
@@ -2784,4 +3918,83 @@ QHash<QString, int> importThread::ivaRelation() const
 void importThread::setIvaRelation(const QHash<QString, int> &ivaRelation)
 {
     _ivaRelation = ivaRelation;
+}
+
+QHash<QString, int> importThread::paisRelation() const
+{
+    return _paisRelation;
+}
+
+void importThread::setPaisRelation(const QHash<QString, int> &paisRelation)
+{
+    _paisRelation = paisRelation;
+}
+
+
+float importThread::getCambioBlock(QString from, QString to, float cuanty)
+{
+    QString url = QString("https://www.google.com/finance/converter?a=%1&from=%2&to=%3")
+            .arg(cuanty)
+            .arg(from)
+            .arg(to);
+    QNetworkAccessManager * manager = new QNetworkAccessManager(this);
+    connect(manager,SIGNAL(finished(QNetworkReply*)),this,SLOT(cambioReplyBlock(QNetworkReply*)));
+    manager->get(QNetworkRequest(QUrl(url)));
+    _block = true;
+    QTime t;
+    t.start();
+    while(_block && t.elapsed() < 5000)
+    {
+        QApplication::processEvents();
+        QThread::msleep(100);
+    }
+    return _cambio;
+}
+
+float importThread::readCambioBlock(QString s)
+{
+    QString place = "<span class=bld>";
+    int index = s.indexOf(place)+place.size();
+    int end = s.indexOf(" ",index);
+    int end2 = s.indexOf("</span>",end);
+    QString sFloat = s.mid(index,end-index);
+   // QString to = s.mid(end+1,end2-end-1);
+    bool ok;
+    float f = sFloat.toFloat(&ok);
+
+    if(ok)
+        return f;
+    else
+        return 0.0;
+}
+
+void importThread::_updateDivisas()
+{
+    QHash<QString,int>::Iterator it;
+    QSqlQuery q(QSqlDatabase::database("grupo"));
+    QDate hoy = QDate::currentDate();
+    emit sizeOfTask(_divisas.size());
+    int x = 0;
+    for(it=_divisas.begin();it!=_divisas.end();++it)
+    {
+        QString id = QString("SELECT * from monedas WHERE id=%1").arg(it.value());
+        if(q.exec(id))
+        {
+            q.first();
+            QString from = q.record().value("nombre_corto").toString();
+            emit Progress(QString("Actializando divisas: %1").arg(from),x);
+            x++;
+
+            float value = getCambioBlock("EUR",from);
+            if(from == "EUR")
+                value = 1.0;
+            q.prepare("UPDATE `monedas` SET `cambio`=:cambio, `fecha_cambio`=:fecha WHERE `id`=:id;");
+            q.bindValue(":cambio",value);
+            q.bindValue(":fecha",hoy);
+            q.bindValue(":id",it.value());
+            if(!q.exec())
+                qDebug()<< q.lastError();
+            _cambioDivisa.insert(it.key(),value);
+        }
+    }
 }

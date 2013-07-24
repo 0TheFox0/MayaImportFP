@@ -2,6 +2,7 @@
 
 #include <QFile>
 #include <QDate>
+#include "Sqlcalls.h"
 GroupCreator::GroupCreator(QObject *parent) :
     QThread(parent)
 {
@@ -67,7 +68,7 @@ void GroupCreator::run()
     }
 }
 
-void GroupCreator::_createTables(bool error, QSqlDatabase db)
+void GroupCreator::_createTables(bool& error, QSqlDatabase db)
 {
     QFile f("://DB/DBGrupo.sql");
     f.open(QFile::ReadOnly);
@@ -84,62 +85,42 @@ void GroupCreator::_createTables(bool error, QSqlDatabase db)
     for(i = 0; i< querys.size();i++)
     {
         emit Progress("Creando tablas...",i);
-        if(!q.exec(querys.at(i)))
+        if(querys.at(i).size() > 10)
         {
-            emit Error(q.lastError().text());
-            qDebug() << q.lastError().text();
-            qDebug() << querys.at(i);
-            error = true;
-            break;
+            if(!q.exec(querys.at(i)))
+            {
+                emit Error(q.lastError().text());
+                qDebug() << q.lastError().text();
+                qDebug() << querys.at(i);
+                error = true;
+                break;
+            }
         }
     }
 }
 
-void GroupCreator::_insertMonedas(QSqlQuery q, bool error)
+void GroupCreator::_insertMonedas(QSqlQuery q, bool &error)
 {
-    QFile f("://DB/divisas.txt");
+    QFile f("://DB/PaisesMonedas.sql");
     if(f.open((QIODevice::ReadOnly | QIODevice::Text)))
     {
 
         QTextStream in(&f);
         in.setCodec("UTF-8");
         QString all = in.readAll();
-        all.remove("\r");
-        all.remove("\n");
-        QStringList blocks = all.split("},",QString::SkipEmptyParts);
-        int i = 0;
-        emit sizeOfTask(blocks.size());
-        foreach(const QString &moneda , blocks)
+        QStringList l = all.split(";",QString::SkipEmptyParts);
+        QStringListIterator it(l);
+        while(it.hasNext())
         {
-
-            QStringList subBlocks = moneda.split("\",",QString::SkipEmptyParts);
-            QString nombre_corto = subBlocks.at(0).mid(subBlocks.at(0).lastIndexOf("\"")+1);
-            QString nombre = subBlocks.at(1).mid(subBlocks.at(1).lastIndexOf("\"")+1);
-            QString simbol = subBlocks.at(4).mid(subBlocks.at(4).lastIndexOf("\"")+1);
-            simbol.remove("}");
-            simbol = simbol.trimmed();
-            q.prepare("INSERT INTO monedas ("
-                      "moneda ,"
-                      "nombre_corto ,"
-                      "simbolo "
-                      ")"
-                      "VALUES ("
-                      ":moneda, :nombre_corto, :simbolo );");
-            q.bindValue(":moneda",nombre);
-            emit Progress("Insertando divisa "+nombre,i);
-            i++;
-            q.bindValue(":nombre_corto",nombre_corto);
-            q.bindValue(":simbolo",simbol);
-            if(!q.exec())
-            {
-                emit Error(q.lastError().text());
-                error = true;
-            }
+            QString line = it.next();
+            if(!line.isEmpty())
+                if(!q.exec(line))
+                    qDebug() << q.lastError();
         }
     }
 }
 
-void GroupCreator::_insertIVA(QSqlQuery q, bool error)
+void GroupCreator::_insertIVA(QSqlQuery q, bool &error)
 {
     emit sizeOfTask(4);
     emit Progress("Insertando IVA : 21%",1);
@@ -153,7 +134,7 @@ void GroupCreator::_insertIVA(QSqlQuery q, bool error)
     qDebug() << q.lastError();
 }
 
-void GroupCreator::_insertNivelAcesso(bool error, QSqlQuery q)
+void GroupCreator::_insertNivelAcesso(bool &error, QSqlQuery q)
 {
     emit sizeOfTask(7);
     emit Progress("Insertando nivel de acceso : Sin Acceso",1);
@@ -217,12 +198,12 @@ void GroupCreator::_insertNewGroup(QString grupo)
     emit Progress("Hecho",1);
 }
 
-void GroupCreator::_insertAdminUser(bool error, QSqlQuery q)
+void GroupCreator::_insertAdminUser(bool &error, QSqlQuery q)
 {
      error &= q.exec("INSERT INTO `usuarios` (`nombre`, `contrasena`, `nivel_acceso`, `categoria`) VALUES ('admin', 'jGl25bVBBBW96Qi9Te4V37Fnqchz/Eu4qB9vKrRIqRg=', '99', 'ADMINISTRADOR');");
 }
 
-void GroupCreator::_insertPoblaciones(bool error, QSqlQuery q)
+void GroupCreator::_insertPoblaciones(bool &error, QSqlQuery q)
 {
     QFile f("://DB/poblaciones.sql");
     if(f.open((QIODevice::ReadOnly | QIODevice::Text)))
@@ -234,7 +215,10 @@ void GroupCreator::_insertPoblaciones(bool error, QSqlQuery q)
         all.remove("\n");
         q.prepare(all);
         if(!q.exec())
+        {
             error = true;
+            emit Error(q.lastError().databaseText());
+        }
     }
 }
 
@@ -252,7 +236,16 @@ void GroupCreator::_createEmpresa()
 
         QSqlQuery q(db);
 
+        QString nombre_empresa = _empresaFp.value("CNOMBRE").toString().trimmed();
         QString n_empresa = _empresaFp.value("CNOMBRE").toString().trimmed();
+        n_empresa = n_empresa.remove(QRegExp(QString::fromUtf8("[-`~!@#$%^&*()_—+=|:;<>«»,.?/{}\'\"\\\[\\\]\\\\]")));
+        n_empresa = n_empresa.remove(QRegExp("[^a-zA-Z0-9\\d\\s]"));
+
+        if(n_empresa.isEmpty())//Raro pero no se sabe
+        {
+            qsrand(QTime::currentTime().msec());
+            n_empresa = QString::number(qrand()%999999);
+        }
 
         QString nEmpresa = QString("emp%1").arg(n_empresa);
 
@@ -280,164 +273,74 @@ void GroupCreator::_createEmpresa()
                         qDebug() << q.lastError().text();
                         qDebug() << querys.at(i);
                         error = true;
+                        emit Error(q.lastError().databaseText());
                         break;
                     }
-                    emit Progress(tr("Creando tablas"),i);
+                    emit Progress(tr("Creando tablas de empresa"),i);
+                }
+            }
+        }
+        if(!error)
+        {
+            QFile f("://DB/DBConta.sql");
+            error = !f.open(QFile::ReadOnly);
+            if(!error)
+            {
+                QString s = f.readAll();
+                s.replace("@conta@",nConta);
+                s.replace("\r\n"," ");
+                QStringList querys = s.split(";",QString::SkipEmptyParts);
+
+                emit sizeOfTask(querys.size());
+
+                for(int i = 0; i< querys.size();i++)
+                {
+                    if(querys.at(i).size() > 10)
+                    {
+                        if(!q.exec(querys.at(i)))
+                        {
+                            qDebug() << q.lastError().text();
+                            qDebug() << querys.at(i);
+                            error = true;
+                            emit Error(q.lastError().databaseText());
+                            break;
+                        }
+                        emit Progress(tr("Creando tablas de contabilidad"),i);
+                    }
                 }
             }
         }
 
         if(!error)
-        { /*
-            QString query = QString(
-                        "INSERT INTO `@grupo@`.`empresas` "
-                        "(`codigo`, `nombre`, `digitos_factura`, `serie`, `nombre_bd`, `nombre_db_conta`,"
-                        "`nombre_bd_medica`, `direccion`, `cp`, `poblacion`, `provincia`, `pais`,"
-                        "`telefono1`, `telefono2`, `fax`, `mail`, `web`, `cif`, `inscripcion`,"
-                        "`comentario_albaran`, `comentario_factura`, `comentario_ticket`,"
-                        "`ejercicio`, `usar_irpf`, `codigo_cuenta_clientes`,"
-                        "`codigo_cuenta_proveedores`, `codigo_cuenta_acreedores`,"
-                        "`digitos_cuenta`, `clave1`, `clave2`, `medica`, `internacional`,"
-                        "`auto_codigo`, `tamanocodigo`, `cuenta_cobros`, `cuenta_pagos`,"
-                        "`id_divisa`, `enlaceweb`, `contabilidad`, `consultas`, `primer_dia_laborable`,"
-                        "`ultimo_dia_laborable`, `horario_primer_dia`, `horario_dia_normal`,"
-                        "`horario_ultimo_dia`, `ticket_factura`, `margen`, `margen_minimo`, `seguimiento`,"
-                        "`id_tarifa_predeterminada`, `actualizardivisas`, `cuenta_ventas_mercaderias`,"
-                        "`cuenta_ventas_servicios`, `cuenta_iva_soportado1`, `cuenta_iva_soportado2`,"
-                        "`cuenta_iva_soportado3`, `cuenta_iva_soportado4`, `cuenta_iva_repercutido1`,"
-                        "`cuenta_iva_repercutido2`, `cuenta_iva_repercutido3`, `cuenta_iva_repercutido4`,"
-                        "`cuenta_iva_repercutido1_re`, `cuenta_iva_repercutido2_re`, `cuenta_iva_repercutido3_re`,"
-                        "`cuenta_iva_repercutido4_re`, `cuenta_iva_soportado1_re`, `cuenta_iva_soportado2_re`,"
-                        "`cuenta_iva_soportado3_re`, `cuenta_iva_soportado4_re`) "
-                        "VALUES "
-                        "(:codigo, :nombre, :digitos_factura, :serie, :nombre_bd, :nombre_db_conta,"
-                        ":nombre_bd_medica, :direccion, :cp, :poblacion, :provincia, :pais,"
-                        ":telefono1, :telefono2, :fax, :mail, :web, :cif, :inscripcion,"
-                        ":comentario_albaran, :comentario_factura, :comentario_ticket,"
-                        ":ejercicio, :usar_irpf, :codigo_cuenta_clientes,"
-                        ":codigo_cuenta_proveedores, :codigo_cuenta_acreedores,"
-                        ":digitos_cuenta, :clave1, :clave2, :medica, :internacional,"
-                        ":auto_codigo, :tamanocodigo, :cuenta_cobros, :cuenta_pagos,"
-                        ":id_divisa, :enlaceweb, :contabilidad, :consultas, :primer_dia_laborable,"
-                        ":ultimo_dia_laborable, :horario_primer_dia, :horario_dia_normal,"
-                        ":horario_ultimo_dia, :ticket_factura, :margen, :margen_minimo, :seguimiento,"
-                        ":id_tarifa_predeterminada, :actualizardivisas, :cuenta_ventas_mercaderias,"
-                        ":cuenta_ventas_servicios, :cuenta_iva_soportado1, :cuenta_iva_soportado2,"
-                        ":cuenta_iva_soportado3, :cuenta_iva_soportado4, :cuenta_iva_repercutido1,"
-                        ":cuenta_iva_repercutido2, :cuenta_iva_repercutido3, :cuenta_iva_repercutido4,"
-                        ":cuenta_iva_repercutido1_re, :cuenta_iva_repercutido2_re, :cuenta_iva_repercutido3_re,"
-                        ":cuenta_iva_repercutido4_re, :cuenta_iva_soportado1_re, :cuenta_iva_soportado2_re,"
-                        ":cuenta_iva_soportado3_re, :cuenta_iva_soportado4_re);"
-                        );
+        {
+            QHash<QString,QVariant> v;
+
+            v["codigo"]=_empresaFp.value("CODEMP").toString().trimmed();
+            v["nombre"]=nombre_empresa;
+            v["digitos_factura"]=9;
+            v["nombre_bd"]=nEmpresa;
+            v["nombre_db_conta"]=nConta;
+            v["nombre_bd_medica"]=nMedic;
+            v["direccion"]=_empresaFp.value("CDOMICILIO").toString().trimmed();
+            v["cp"]=_empresaFp.value("CCODPOS").toString().trimmed();
+            v["poblacion"]=_empresaFp.value("CPOBLACION").toString().trimmed();
+            v["provincia"]=_empresaFp.value("CPROVINCIA").toString().trimmed();
+            v["pais"]=QString::fromUtf8("ESPAÑA");
+            v["telefono1"]=_empresaFp.value("CTLF").toString().trimmed();
+            v["fax"]=_empresaFp.value("CFAX").toString().trimmed();
+            v["mail"]=_empresaFp.value("CEMAIL").toString().trimmed();
+            v["cif"]=_empresaFp.value("CNIF").toString().trimmed();
+
+            //if(!q2.exec())
+            QString error;
             QString grupo = "Grupo";
             grupo.append(_nombre);
-
-            query.replace("@grupo@",grupo);
-            q.prepare(query);
-            q.bindValue(":codigo",_empresaFp.value("CODEMP").toString());
-            q.bindValue(":nombre",n_empresa);
-            q.bindValue(":digitos_factura",9);
-            q.bindValue(":serie",1);
-            q.bindValue(":nombre_bd",nEmpresa);
-            q.bindValue(":nombre_db_conta",nConta);
-            q.bindValue(":nombre_bd_medica",nMedic);
-            q.bindValue(":direccion",_empresaFp.value("CDOMICILIO").toString().trimmed());
-            q.bindValue(":cp",_empresaFp.value("CCODPOS").toString().trimmed());
-            q.bindValue(":poblacion",_empresaFp.value("CPOBLACION").toString().trimmed());
-            q.bindValue(":provincia",_empresaFp.value("CPROVINCIA").toString().trimmed());
-            q.bindValue(":pais","ESPAÑA");//TODO cambiar esto
-            q.bindValue(":telefono1",_empresaFp.value("CTLF").toString().trimmed());
-            q.bindValue(":telefono2","");
-            q.bindValue(":fax",_empresaFp.value("CFAX").toString().trimmed());
-            q.bindValue(":mail",_empresaFp.value("CEMAIL").toString().trimmed());
-            q.bindValue(":web","");
-            q.bindValue(":cif",_empresaFp.value("CNIF").toString().trimmed());
-            q.bindValue(":inscripcion","");
-            q.bindValue(":comentario_albaran","");
-            q.bindValue(":comentario_factura","");
-            q.bindValue(":comentario_ticket","");
-            q.bindValue(":ejercicio",QDate::currentDate().year());
-            q.bindValue(":usar_irpf",0);//TODO irpf empresa
-            q.bindValue(":codigo_cuenta_clientes","");
-            q.bindValue(":codigo_cuenta_proveedores","");
-            q.bindValue(":codigo_cuenta_acreedores","");
-            q.bindValue(":digitos_cuenta",9);
-            q.bindValue(":clave1","");//TODO claves
-            q.bindValue(":clave2","");
-            q.bindValue(":medica",0);
-            q.bindValue(":internacional",0);
-            q.bindValue(":auto_codigo",0);
-            q.bindValue(":tamanocodigo",9);
-            q.bindValue(":cuenta_cobros","");//TODO c cobros
-            q.bindValue(":cuenta_pagos","");//TODO c pagos
-            q.bindValue(":id_divisa",0);//TODO divisa
-            q.bindValue(":enlaceweb",0);//TODO Grrr
-            q.bindValue(":contabilidad",0);
-            q.bindValue(":consultas",0);
-            q.bindValue(":primer_dia_laborable",0);
-            q.bindValue(":ultimo_dia_laborable",0);
-            q.bindValue(":horario_primer_dia","");
-            q.bindValue(":horario_dia_normal","");
-            q.bindValue(":horario_ultimo_dia","");
-            q.bindValue(":ticket_factura",1);
-            q.bindValue(":margen",0);
-            q.bindValue(":margen_minimo",0);
-            q.bindValue(":seguimiento",0);
-            q.bindValue(":id_tarifa_predeterminada",0);
-            q.bindValue(":actualizardivisas",0);
-            q.bindValue(":cuenta_ventas_mercaderias","");
-            q.bindValue(":cuenta_ventas_servicios","");
-            q.bindValue(":cuenta_iva_soportado1","");
-            q.bindValue(":cuenta_iva_soportado2","");
-            q.bindValue(":cuenta_iva_soportado3","");
-            q.bindValue(":cuenta_iva_soportado4","");
-            q.bindValue(":cuenta_iva_repercutido1","");
-            q.bindValue(":cuenta_iva_repercutido2","");
-            q.bindValue(":cuenta_iva_repercutido3","");
-            q.bindValue(":cuenta_iva_repercutido4","");
-            q.bindValue(":cuenta_iva_repercutido1_re","");
-            q.bindValue(":cuenta_iva_repercutido2_re","");
-            q.bindValue(":cuenta_iva_repercutido3_re","");
-            q.bindValue(":cuenta_iva_repercutido4_re","");
-            q.bindValue(":cuenta_iva_soportado1_re","");
-            q.bindValue(":cuenta_iva_soportado2_re","");
-            q.bindValue(":cuenta_iva_soportado3_re","");
-            q.bindValue(":cuenta_iva_soportado4_re","");*/
-            QString query = QString(
-                        "INSERT INTO `@grupo@`.`empresas` "
-                        "(`codigo`, `nombre`, `digitos_factura`, `serie`, `nombre_bd`, `nombre_db_conta`,"
-                        "`nombre_bd_medica`, `direccion`, `cp`, `poblacion`, `provincia`, `pais`,"
-                        "`telefono1`,  `fax`, `mail`, `cif`) "
-                        "VALUES "
-                        "(:codigo, :nombre, 9 , 1, :nombre_bd, :nombre_db_conta,"
-                        ":nombre_bd_medica, :direccion, :cp, :poblacion, :provincia, :pais,"
-                        ":telefono1, :fax, :mail, :cif);"
-                        );
-            QString grupo = "Grupo";
-            grupo.append(_nombre);
-
-            query = query.replace("@grupo@",grupo);
-            QSqlQuery q2(QSqlDatabase::database("grupo"));
-            q2.prepare(query);
-            q2.bindValue(":codigo",_empresaFp.value("CODEMP").toString().trimmed());
-            q2.bindValue(":nombre",n_empresa);
-            q2.bindValue(":nombre_bd",nEmpresa);
-            q2.bindValue(":nombre_db_conta",nConta);
-            q2.bindValue(":nombre_bd_medica",nMedic);
-            q2.bindValue(":direccion",_empresaFp.value("CDOMICILIO").toString().trimmed());
-            q2.bindValue(":cp",_empresaFp.value("CCODPOS").toString().trimmed());
-            q2.bindValue(":poblacion",_empresaFp.value("CPOBLACION").toString().trimmed());
-            q2.bindValue(":provincia",_empresaFp.value("CPROVINCIA").toString().trimmed());
-            q2.bindValue(":pais","ESPAÑA");//TODO cambiar esto
-            q2.bindValue(":telefono1",_empresaFp.value("CTLF").toString().trimmed());
-            q2.bindValue(":fax",_empresaFp.value("CFAX").toString().trimmed());
-            q2.bindValue(":mail",_empresaFp.value("CEMAIL").toString().trimmed());
-            q2.bindValue(":cif",_empresaFp.value("CNIF").toString().trimmed());
-
-            if(!q2.exec())
+            QString table = "@grupo@`.`empresas";
+            table = table.replace("@grupo@",grupo);
+            if(SqlInsert(v,table,QSqlDatabase::database("grupo"),error)<0)
             {
-                qDebug() << q2.lastError().text();
-                qDebug() << q2.boundValues();
+                qDebug() << error;
+                emit Error(q.lastError().text());
             }
             else
             {
@@ -449,6 +352,15 @@ void GroupCreator::_createEmpresa()
                     db.setPort(_port);
                 db.setDatabaseName(nEmpresa);
                 db.open();
+
+                QSqlDatabase d = QSqlDatabase::addDatabase("QMYSQL","conta");
+                d.setHostName(_host);
+                d.setUserName(_user);
+                d.setPassword(_pass);
+                if(_port!=0)
+                    d.setPort(_port);
+                d.setDatabaseName(nConta);
+                d.open();
             }
         }
     }

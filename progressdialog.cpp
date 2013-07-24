@@ -33,18 +33,19 @@ void progressDialog::sizeOfTask(int max)
 
 void progressDialog::end()
 {
-    ui->progressBar->setValue(ui->progressBar->maximum());
+    ui->progressBar->setMaximum(1);
+    ui->progressBar->setValue(1);
     ui->pushButton->setText(tr("Aceptar"));
-    ui->label->setText(tr("Terminado"));
+    ui->label->setText(QString::fromUtf8("¡Terminado!"));
 }
 
 void progressDialog::on_pushButton_clicked()
 {
     if(ui->pushButton->text() == tr("Cancelar"))
     {
-        if(QMessageBox::question(this,tr("¿Está realmente seguro?"),
-                              tr("Cancelar la importación en medio del proceso puede tener consecuencias impredecibles.\n"
-                                 "Cancele solo si está realmente seguro, y siempre bajo su responsabilidad"),tr("Si"),tr("No"))
+        if(QMessageBox::question(this,QString::fromUtf8("¿Está realmente seguro?"),
+                              QString::fromUtf8("Cancelar la importación en medio del proceso puede tener consecuencias impredecibles.\n"
+                                 "Cancele solo si está realmente seguro, y siempre bajo su responsabilidad"),tr("No"),tr("Si"))
                 == QMessageBox::Accepted)
         {
             ui->label->setText(tr("Cancelando..."));

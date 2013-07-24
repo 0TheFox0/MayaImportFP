@@ -4,66 +4,7 @@
 #include "progressdialog.h"
 #include "src/mainwindow.h"
 #include "setdivisas.h"
-int SQLInsert(QHash<QString,QVariant> values, QString table, QSqlDatabase database, QString& error)
-{
-    if(!database.isOpen())
-    {
-        error = tr("Base de datos cerrada");
-        return false;
-    }
-    if(database.driverName() == "QMYSQL")
-    {
-        qDebug()<< "Mysql";
-    }
-    else if (database.driverName() == "QSQLITE")
-    {
-
-    }
-    QString colums;
-    QTextStream s(&colums);
-
-    QString data;
-    QTextStream s1(&data);
-
-    //INSERT INTO `world`.`cab_fac` (`serie`) VALUES ('a');
-    s << "INSERT INTO `" << table << "` (";
-    s1 << "VALUES (";
-    QHashIterator<QString,QVariant> i(values);
-    while (i.hasNext()) {
-        i.next();
-        s << "`" << i.key() << "`";
-        s1 << ":" << i.key();
-        if(i.hasNext())
-        {
-            s  << ",";
-            s1 << ",";
-        }
-    }
-    s1 << ");";
-    s << ")" << data;
-
-    qDebug() << "query final = " << colums;
-    QSqlQuery q(database);
-    q.prepare(colums);
-
-    QHashIterator<QString,QVariant> it(values);
-    while (it.hasNext()) {
-        it.next();
-        QString aux = ":";
-        aux.append(it.key());
-        q.bindValue(aux,it.value());
-    }
-
-
-    bool b = q.exec();
-    int r = -1;
-    if (b)
-        r = q.lastInsertId().toInt();
-    else
-        error = q.lastError().text();
-    return r;
-}
-
+#include <QValidator>
 importDialog::importDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::importDialog)
@@ -76,20 +17,7 @@ importDialog::importDialog(QWidget *parent) :
     db.setUserName("root");
     db.setPassword("marco");
     db.open();
-/*
-    QHash<QString,QVariant> v;
-    v["serie"]="A";
-    v["factura"]="9089";
-    v["cliente"]="pepito's bar of su puta madre";
-    v["impreso"]=true;
-    v["fecha"] = QDate::currentDate();
 
-    int id = SQLInsert(v,"world`.`cab_fac",db);
-    if(id >= 0)
-        qDebug() << "Inserted at id " << id;
-    else
-        qDebug() << "Joder...";
-*/
     connect(ui->txtHost,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
     connect(ui->txtUser,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
     connect(ui->txtPass,SIGNAL(textChanged(QString)),this,SLOT(textChanged(QString)));
@@ -104,6 +32,7 @@ importDialog::importDialog(QWidget *parent) :
     ui->btnConectar->setEnabled(true);
 #endif
 
+    ui->txtNewGName->setValidator(new QRegExpValidator(QRegExp("([A-Z]*[a-z]*[0-9]*)*")));
 }
 
 importDialog::~importDialog()
@@ -125,12 +54,12 @@ void importDialog::on_btnImportar_clicked()
 {
     if(ui->btnImportar->text() != "Importar")
     {
-        ui->btnImportar->setEnabled(false);
+       // ui->btnImportar->setEnabled(false);
         if(ui->stackedWidget->currentIndex() == 3)
         {
                 _createNewGroup();
         }
-        else if(ui->stackedWidget->currentIndex() == 4)
+        else if(ui->stackedWidget->currentIndex() == 6)
         {
             QHash<QComboBox*,QString>::Iterator i;
             for(i=_combos.begin();i!=_combos.end();++i)
@@ -138,13 +67,21 @@ void importDialog::on_btnImportar_clicked()
                 int id = i.key()->model()->data(i.key()->model()->index(i.key()->currentIndex(),0)).toInt();
                 _divisas[i.value()] = id;
             }
-            QSqlQueryModel * model = (QSqlQueryModel *)ui->comboIva1->model();
 
-            _ivas[model->record(ui->comboIva1->currentIndex()).value("CTIPOIVA").toString().trimmed()] = 1;
-            _ivas[model->record(ui->comboIva2->currentIndex()).value("CTIPOIVA").toString().trimmed()] = 2;
-            _ivas[model->record(ui->comboIva3->currentIndex()).value("CTIPOIVA").toString().trimmed()] = 3;
-            _ivas[model->record(ui->comboIva4->currentIndex()).value("CTIPOIVA").toString().trimmed()] = 4;
+            QHash<QComboBox*,QString>::Iterator it;
+            for(it=_combos2.begin();it!=_combos2.end();++it)
+            {
+                int id = it.key()->model()->data(it.key()->model()->index(it.key()->currentIndex(),0)).toInt();
+                _ivas[it.value()] = id;
+            }
 
+            QHash<QComboBox*,QString>::Iterator it2;
+            for(it2=_combos3.begin();it2!=_combos3.end();++it2)
+            {
+                int id = it2.key()->model()->data(it2.key()->model()->index(it2.key()->currentIndex(),0)).toInt();
+                _paises[it2.value()] = id;
+            }
+            qDebug() << _paises;
             ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);
             ui->btnImportar->setText("Importar");
             ui->btnImportar->setEnabled(true);
@@ -161,8 +98,10 @@ void importDialog::on_btnImportar_clicked()
         ui->btnImportar->setEnabled(false);
         importThread * Thread = new importThread(mainWin , this);
         Thread->setPath(_empDir);
+        Thread->setPathConta(_contaDir);
 
         Thread->setIvaRelation(_ivas);
+        Thread->setPaisRelation(_paises);
 
         connect(Thread,SIGNAL(finished()),Thread,SLOT(deleteLater()));
         connect(Thread,SIGNAL(finished()),this,SLOT(reEnableImportar()));
@@ -242,7 +181,7 @@ void importDialog::_createNewGroup()
 
     progressDialog * d = new progressDialog (this);
     d->setModal(true);
-    connect(g,SIGNAL(Error(QString)),d,SLOT(error(QString)));
+    connect(g,SIGNAL(Error(QString)),this,SLOT(grupoError(QString)));
     connect(g,SIGNAL(Progress(QString,int)),d,SLOT(Progress(QString,int)));
     connect(g,SIGNAL(sizeOfTask(int)),d,SLOT(sizeOfTask(int)));
     connect(g,SIGNAL(finished()),d,SLOT(deleteLater()));
@@ -280,6 +219,9 @@ void importDialog::selectionChanged(QItemSelection, QItemSelection)
         _empDir.append("/DBF");
         _empDir.append(_empresaFp.value("CODEMP").toString().trimmed());
 
+        _contaDir = ui->txtRutaConta->text();
+        _contaDir.append("/EMP");
+        _contaDir.append(_empresaFp.value("CODEMP").toString().trimmed());
     }
     else
     {
@@ -377,20 +319,82 @@ void importDialog::afterCreateGroup()
     ui->scrollArea->setWidget(container);
 
     w.openDb(_empDir + "/Ivas.dbf");
-    QSqlQueryModel * model = new QSqlQueryModel(this);
-    model->setQuery("Select * from d_Ivas",QSqlDatabase::database("dbfEditor"));
+    if(!q.exec("Select * from d_Ivas"))
+    {
+        QMessageBox::critical(this,"Error",q.lastError().text());
+        return;
+    }
+    q.first();
 
-    ui->comboIva1->setModel(model);
-    ui->comboIva1->setModelColumn(2);
+    QSqlQueryModel * q2 = new QSqlQueryModel(this);
+    q2->setQuery("SELECT * FROM tiposiva;",QSqlDatabase::database("grupo"));
 
-    ui->comboIva2->setModel(model);
-    ui->comboIva2->setModelColumn(2);
+    QWidget* container2 = new QWidget(this);
+    QVBoxLayout * _layout2 = new QVBoxLayout(container);
+    do
+    {
+        QSqlRecord r = q.record();
+        QString codigo = r.value("CTIPOIVA").toString().trimmed();
+        QString desc = r.value("CDETIVA").toString().trimmed();
 
-    ui->comboIva3->setModel(model);
-    ui->comboIva3->setModelColumn(2);
+        QComboBox * combo = new QComboBox(this);
+        combo->setModel(q2);
+        combo->setModelColumn(2);
 
-    ui->comboIva4->setModel(model);
-    ui->comboIva4->setModelColumn(2);
+        QLabel * label = new QLabel(desc,this);
+
+        QHBoxLayout * lay = new QHBoxLayout(this);
+
+        lay->addWidget(label);
+        lay->addWidget(combo);
+
+        _layout2->addLayout(lay);
+        _combos2.insert(combo,codigo);
+        combo->setCurrentIndex(0);
+
+    }while(q.next());
+    _layout2->addSpacerItem(new QSpacerItem(1,1,QSizePolicy::Preferred,QSizePolicy::Expanding));
+    container2->setLayout(_layout2);
+    ui->scrollIva->setWidget(container2);
+
+    w.openDb(ui->txtRutaBD->text() + "/dbf/Naciones.dbf");
+    if(!q.exec("Select * from d_Naciones"))
+    {
+        QMessageBox::critical(this,"Error",q.lastError().text());
+        return;
+    }
+    q.first();
+
+    QSqlQueryModel * q3 = new QSqlQueryModel(this);
+    q3->setQuery("SELECT * FROM paises;",QSqlDatabase::database("grupo"));
+
+    QWidget* container3 = new QWidget(this);
+    QVBoxLayout * _layout3 = new QVBoxLayout(container);
+    do
+    {
+        QSqlRecord r = q.record();
+        QString codigo = r.value("CCODIGO").toString().trimmed();
+        QString desc = r.value("CNOMBRE").toString().trimmed();
+
+        QComboBox * combo = new QComboBox(this);
+        combo->setModel(q3);
+        combo->setModelColumn(1);
+
+        QLabel * label = new QLabel(desc,this);
+
+        QHBoxLayout * lay = new QHBoxLayout(this);
+
+        lay->addWidget(label);
+        lay->addWidget(combo);
+
+        _layout3->addLayout(lay);
+        _combos3.insert(combo,codigo);
+        combo->setCurrentIndex(0);
+
+    }while(q.next());
+    _layout3->addSpacerItem(new QSpacerItem(1,1,QSizePolicy::Preferred,QSizePolicy::Expanding));
+    container3->setLayout(_layout3);
+    ui->scrollPaises->setWidget(container3);
 }
 
 void importDialog::on_btnConectFP_clicked()
@@ -417,4 +421,16 @@ void importDialog::on_btnVolver_clicked()
 void importDialog::grupo(QSqlRecord r)
 {
     _grupoMaya = r;
+}
+
+void importDialog::grupoError(QString s)
+{
+    QMessageBox::critical(this,"Error",s);
+}
+
+void importDialog::on_btnSearchBDConta_clicked()
+{
+    QString route ="";
+    route = QFileDialog::getExistingDirectory (this, tr("Ruta de la base de datos"));
+    ui->txtRutaConta->setText(route);
 }

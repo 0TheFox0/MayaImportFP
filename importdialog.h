@@ -46,6 +46,9 @@ private slots:
 
     void on_btnVolver_clicked();
     void grupo(QSqlRecord);
+    void grupoError(QString s);
+    void on_btnSearchBDConta_clicked();
+
 private:
     Ui::importDialog *ui;
     QDbfEditor* editor;
@@ -57,12 +60,17 @@ private:
     QSqlRecord _empresaFp;
     QSqlRecord _grupoMaya;
 
-    QHash<QString,int> _divisas;
-    QHash<QComboBox*,QString> _combos;
 
+    QHash<QComboBox*,QString> _combos;
+    QHash<QComboBox*,QString> _combos2;
+    QHash<QComboBox*,QString> _combos3;
+
+    QHash<QString,int> _divisas;
     QHash<QString,int> _ivas;
+    QHash<QString,int> _paises;
 
     QString _empDir;
+    QString _contaDir;
 };
 
 #endif // IMPORTDIALOG_H

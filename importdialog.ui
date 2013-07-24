@@ -45,19 +45,15 @@
      </widget>
      <widget class="QWidget" name="page_4">
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="0" column="0" colspan="3">
-        <widget class="QLabel" name="label_6">
+       <item row="2" column="0" colspan="2">
+        <widget class="QLabel" name="label_21">
          <property name="text">
-          <string>Indique la ruta de acceso a la base de datos de FacturaPlus (carpeta GES2012)</string>
+          <string>Indique la ruta de acceso a la base de datos de ContaPlus (carpeta CON2012)</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="2">
-        <widget class="QLineEdit" name="txtRutaBD">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
+       <item row="3" column="0" colspan="2">
+        <widget class="QLineEdit" name="txtRutaConta"/>
        </item>
        <item row="1" column="2">
         <widget class="QToolButton" name="btnSearchBD">
@@ -81,20 +77,24 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QPushButton" name="btnConectFP">
-         <property name="maximumSize">
-          <size>
-           <width>100</width>
-           <height>16777215</height>
-          </size>
-         </property>
+       <item row="1" column="0" colspan="2">
+        <widget class="QLineEdit" name="txtRutaBD">
          <property name="text">
-          <string>Conectar</string>
+          <string/>
          </property>
         </widget>
        </item>
-       <item row="2" column="1" colspan="2">
+       <item row="0" column="0" colspan="3">
+        <widget class="QLabel" name="label_6">
+         <property name="text">
+          <string>Indique la ruta de acceso a la base de datos de FacturaPlus (carpeta GES2012)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0" colspan="3">
+        <widget class="QListView" name="listViewFP"/>
+       </item>
+       <item row="4" column="1" colspan="2">
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -107,8 +107,40 @@
          </property>
         </spacer>
        </item>
-       <item row="3" column="0" colspan="3">
-        <widget class="QListView" name="listViewFP"/>
+       <item row="4" column="0">
+        <widget class="QPushButton" name="btnConectFP">
+         <property name="maximumSize">
+          <size>
+           <width>100</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Conectar</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="QToolButton" name="btnSearchBDConta">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>30</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>...</string>
+         </property>
+         <property name="arrowType">
+          <enum>Qt::NoArrow</enum>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -261,7 +293,11 @@
            </widget>
           </item>
           <item row="0" column="1">
-           <widget class="QLineEdit" name="txtNewGName"/>
+           <widget class="QLineEdit" name="txtNewGName">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
           </item>
           <item row="1" column="0">
            <widget class="QLabel" name="label_9">
@@ -331,55 +367,6 @@
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBox">
-         <property name="title">
-          <string>IVA</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_2">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_14">
-            <property name="text">
-             <string>21%</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QComboBox" name="comboIva1"/>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_15">
-            <property name="text">
-             <string>10%</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QComboBox" name="comboIva2"/>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_16">
-            <property name="text">
-             <string>4%</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QComboBox" name="comboIva3"/>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_17">
-            <property name="text">
-             <string>Exento</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QComboBox" name="comboIva4"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item>
         <widget class="QLabel" name="label_19">
          <property name="text">
           <string>Divisas</string>
@@ -397,7 +384,77 @@
             <x>0</x>
             <y>0</y>
             <width>433</width>
-            <height>332</height>
+            <height>469</height>
+           </rect>
+          </property>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="page_7">
+      <layout class="QVBoxLayout" name="verticalLayout_7">
+       <item>
+        <widget class="QLabel" name="label_14">
+         <property name="text">
+          <string>Seleccione las relaciones correctas</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_22">
+         <property name="text">
+          <string>Iva</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="scrollIva">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents_2">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>433</width>
+            <height>469</height>
+           </rect>
+          </property>
+         </widget>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="page_8">
+      <layout class="QVBoxLayout" name="verticalLayout_8">
+       <item>
+        <widget class="QLabel" name="label_15">
+         <property name="text">
+          <string>Seleccione las relaciones correctas</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="label_23">
+         <property name="text">
+          <string>Paises</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="scrollPaises">
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents_3">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>433</width>
+            <height>469</height>
            </rect>
           </property>
          </widget>

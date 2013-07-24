@@ -32,6 +32,7 @@
         <file>DB/DBEmpresa.sql</file>
         <file>DB/DBGrupo.sql</file>
         <file>DB/poblaciones.sql</file>
-        <file>DB/divisas.txt</file>
+        <file>DB/DBConta.sql</file>
+        <file>DB/PaisesMonedas.sql</file>
     </qresource>
 </RCC>

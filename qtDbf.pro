@@ -14,7 +14,8 @@ HEADERS += src/structures.h \
     importthread.h \
     importdialog.h \
     setdivisas.h \
-    groupcreator.h
+    groupcreator.h \
+    Sqlcalls.h
 SOURCES += src/dbfeditor.cpp \
     src/main.cpp \
     src/mainwindow.cpp \
@@ -31,7 +32,8 @@ SOURCES += src/dbfeditor.cpp \
 RESOURCES += qtDbf.qrc
 QT += sql \
     svg \
-    widgets
+    widgets \
+    network
 OBJECTS_DIR += ./.obj
 MOC_DIR += ./.moc
 RCC_DIR += ./.rcc

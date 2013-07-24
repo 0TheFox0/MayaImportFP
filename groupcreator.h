@@ -31,13 +31,13 @@ signals:
     void insertedGrupo(QSqlRecord);
 public slots:
 private:
-    void _createTables(bool error, QSqlDatabase db);
-    void _insertMonedas(QSqlQuery q, bool error);
-    void _insertIVA(QSqlQuery q, bool error);
-    void _insertNivelAcesso(bool error, QSqlQuery q);
+    void _createTables(bool &error, QSqlDatabase db);
+    void _insertMonedas(QSqlQuery q, bool& error);
+    void _insertIVA(QSqlQuery q, bool& error);
+    void _insertNivelAcesso(bool& error, QSqlQuery q);
     void _insertNewGroup(QString grupo);
-    void _insertAdminUser(bool error, QSqlQuery q);
-    void _insertPoblaciones(bool error, QSqlQuery q);
+    void _insertAdminUser(bool& error, QSqlQuery q);
+    void _insertPoblaciones(bool& error, QSqlQuery q);
     void _createEmpresa();
 };
 
