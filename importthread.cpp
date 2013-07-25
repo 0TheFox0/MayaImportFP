@@ -1341,7 +1341,7 @@ void importThread::_importPresCli()
                 }
                 QSqlQuery updateCab(QSqlDatabase::database("empresa"));
                 updateCab.prepare("UPDATE `cab_pre` SET "
-                           "`fecha`=:fecha, `valido_hasta`=:valido_hasta, `codigo_cliente`=:codigo_cliente,"
+                           "`fecha`=:fecha,`ejercicio`=:ejercicio, `valido_hasta`=:valido_hasta, `codigo_cliente`=:codigo_cliente,"
                            "`id_cliente`=:id_cliente, `cliente`=:cliente, `cif`=:cif, `direccion1`=:direccion1,"
                            "`direccion2`=:direccion2, `cp`=:cp, `poblacion`=:poblacion, `provincia`=:provincia,"
                            "`id_pais`=:id_pais, `telefono`=:telefono, `movil`=:movil, `fax`=:fax, `dto`=:dto,"
@@ -1361,6 +1361,7 @@ void importThread::_importPresCli()
 
                 QSqlRecord rClient = _clientes.value(rCab.value("CCODCLI").toString().trimmed());
                 updateCab.bindValue(":fecha",rCab.value("DFECPRE").toDate());
+                updateCab.bindValue(":ejercicio",rCab.value("DFECPRE").toDate().year());
                 updateCab.bindValue(":valido_hasta",QDate(2050,1,1));
                 updateCab.bindValue(":codigo_cliente",rClient.value("codigo_cliente").toString());
                 updateCab.bindValue(":id_cliente",rClient.value("id").toInt());
@@ -1679,7 +1680,7 @@ void importThread::_importPedCli()
                 QSqlQuery updateCab(QSqlDatabase::database("empresa"));
 
                 updateCab.prepare("UPDATE `ped_cli` SET "
-                       "`pedido`=:pedido, `fecha`=:fecha, `pedido_cliente`=:pedido_cliente,"
+                       "`pedido`=:pedido, `fecha`=:fecha,`ejercicio`=:ejercicio, `pedido_cliente`=:pedido_cliente,"
                        "`id_cliente`=:id_cliente, `codigo_cliente`=:codigo_cliente, `cliente`=:cliente,"
                        "`direccion1`=:direccion1, `direccion2`=:direccion2, `poblacion`=:poblacion,"
                        "`provincia`=:provincia, `cp`=:cp, `id_pais`=:id_pais, `cif`=:cif,"
@@ -1708,6 +1709,7 @@ void importThread::_importPedCli()
 
                 updateCab.bindValue(":pedido",rCab.value("NNUMPED").toString().trimmed());
                 updateCab.bindValue(":fecha",rCab.value("DFECPED").toDate());
+                updateCab.bindValue(":ejercicio",rCab.value("DFECPED").toDate().year());
                 updateCab.bindValue("pedido_cliente",nPedidoCliente.value(rCab.value("CCODCLI").toString().trimmed()));
 
                 updateCab.bindValue(":id_cliente",rClient.value("id").toInt());
@@ -2054,7 +2056,7 @@ void importThread::_importAlbCli()
                 QSqlQuery updateCab(QSqlDatabase::database("empresa"));
 
                 updateCab.prepare("UPDATE `cab_alb` SET "
-                                  "`fecha`=:fecha, pedido_cliente=:pedido_cliente,"
+                                  "`fecha`=:fecha,`ejercicio`=:ejercicio, pedido_cliente=:pedido_cliente,"
                                   "`id_cliente`=:id_cliente, `codigo_cliente`=:codigo_cliente, `cliente`=:cliente,"
                                   "`direccion1`=:direccion1, `direccion2`=:direccion2, `poblacion`=:poblacion,"
                                   "`provincia`=:provincia, `cp`=:cp, `id_pais`=:id_pais, `cif`=:cif,"
@@ -2073,6 +2075,7 @@ void importThread::_importAlbCli()
                                   "`imp_gasto1`=:imp_gasto1"
                                   " WHERE `id`=:id;");
 
+                updateCab.bindValue(":ejercicio",rCab.value("DFECALB").toDate().year());
                 updateCab.bindValue(":fecha",rCab.value("DFECALB").toDate());
                 QString NNUMPED = rCab.value("NNUMPED").toString().trimmed();
                 updateCab.bindValue(":pedido_cliente",NNUMPED);
@@ -2279,6 +2282,17 @@ void importThread::_importFacCli()
         QString serie = rCab.value("CSERIE").toString().trimmed();
         double totalRE = rCab.value("NTOTALREC").toDouble();
 
+        if(!_series.contains(serie))
+        {
+            wq.prepare("INSERT INTO `series` (`serie`) VALUES (:s)");
+            wq.bindValue(":s",serie);
+            if(!wq.exec())
+            {
+                _haveError = true;
+                _error = wq.lastError().text();
+            }
+            _series.insert(serie,true);
+        }
         QString comentKey = serie + NNUMPRE;
 
         wq.prepare("INSERT INTO `cab_fac` (`serie`, `factura`) VALUES (:s,:n);");
@@ -2434,7 +2448,7 @@ void importThread::_importFacCli()
                 //"`dc_cuenta`='a', `cuenta_corriente`='a',
                 //"`gasto_to_coste`='a', `asiento`='a'"
                 updateCab.prepare("UPDATE `cab_fac` SET "
-                                  "`codigo_cliente`=:codigo_cliente, `fecha`=:fecha, "
+                                  "`codigo_cliente`=:codigo_cliente, `fecha`=:fecha,`ejercicio`=:ejercicio,"
                                   "`id_cliente`=:id_cliente, `cliente`=:cliente,"
                                   "`direccion1`=:direccion1, `direccion2`=:direccion2, `cp`=:cp,"
                                   "`poblacion`=:poblacion, `provincia`=:provincia, `id_pais`=:id_pais,"
@@ -2460,6 +2474,7 @@ void importThread::_importFacCli()
 
                 updateCab.bindValue(":codigo_cliente",rClient.value("codigo_cliente").toString());
                 updateCab.bindValue(":fecha",rCab.value("DFECFAC").toDate());
+                updateCab.bindValue(":ejercicio",rCab.value("DFECFAC").toDate().year());
 
                 updateCab.bindValue(":id_cliente",rClient.value("id").toInt());
                 updateCab.bindValue(":cliente",rClient.value("nombre_fiscal").toString());
@@ -3274,12 +3289,13 @@ void importThread::_importFacPro()
 
         wq.prepare("INSERT INTO `fac_pro` (`factura`) VALUES (:n);");
         //wq.bindValue(":s",serie);
-        wq.bindValue(":n",NNUMPRE);
+        wq.bindValue(":n",rCab.value("CSUFAC").toString().trimmed());
         if(wq.exec())
         {
             int idCab = wq.lastInsertId().toInt();
-            linea.prepare("SELECT * FROM d_Facprol where NNUMALB=:n");
-            linea.bindValue(":n",rCab.value("CSUFAC").toString().trimmed());
+            linea.prepare("SELECT * FROM d_Facprol where NNUMFAC=:n AND CSERIE=:serie");
+            linea.bindValue(":n",NNUMPRE);
+            linea.bindValue(":serie",serie);
             if(linea.exec())
             {
                 double base1 = 0;
@@ -3314,7 +3330,7 @@ void importThread::_importFacPro()
                 {
                     QSqlRecord lRecord = linea.record();
                     QSqlQuery wl(QSqlDatabase::database("empresa"));
-                    wl.prepare("INSERT INTO `lin_alb_pro` "
+                    wl.prepare("INSERT INTO `lin_fac_pro` "
                                "(`id_cab`, `id_articulo`, `codigo`, `cantidad`,"
                                "`descripcion`, `precio`, `subtotal`, `porc_dto`,"
                                "`dto`, `porc_iva`, `iva`, `porc_rec`, `rec`, `total`)"
@@ -3664,9 +3680,9 @@ void importThread::run()
 {
     _checkIva();
     _updateDivisas();
-    //if(!_hardStop && !_haveError){ _importFormPago(); }
-    //if(!_hardStop && !_haveError){ _importClients();  }
-    //if(!_hardStop && !_haveError){ _importProv();     }
+    if(!_hardStop && !_haveError){ _importFormPago(); }
+    if(!_hardStop && !_haveError){ _importClients();  }
+    if(!_hardStop && !_haveError){ _importProv();     }
     if(!_hardStop && !_haveError){ _importArticulos();}
 
     if(!_hardStop && !_haveError){ _importPresCli();  }

@@ -50,45 +50,57 @@ void importDialog::on_btnSearchBD_clicked()
 
 
 
+void importDialog::_getRelations()
+{
+    QHash<QComboBox*,QString>::Iterator i;
+    for(i=_combos.begin();i!=_combos.end();++i)
+    {
+        if(_validDivisas.value(i.key())->isChecked())
+        {
+            int id = i.key()->model()->data(i.key()->model()->index(i.key()->currentIndex(),0)).toInt();
+            _divisas[i.value()] = id;
+        }
+    }
+
+    QHash<QComboBox*,QString>::Iterator it;
+    for(it=_combos2.begin();it!=_combos2.end();++it)
+    {
+        int id = it.key()->model()->data(it.key()->model()->index(it.key()->currentIndex(),0)).toInt();
+        _ivas[it.value()] = id;
+    }
+
+    QHash<QComboBox*,QString>::Iterator it2;
+    for(it2=_combos3.begin();it2!=_combos3.end();++it2)
+    {
+        int id = it2.key()->model()->data(it2.key()->model()->index(it2.key()->currentIndex(),0)).toInt();
+        _paises[it2.value()] = id;
+    }
+    qDebug() << _paises;
+    ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);
+    ui->btnImportar->setText("Importar");
+    ui->btnImportar->setEnabled(true);
+}
+
 void importDialog::on_btnImportar_clicked()
 {
     if(ui->btnImportar->text() != "Importar")
     {
-       // ui->btnImportar->setEnabled(false);
-        if(ui->stackedWidget->currentIndex() == 3)
-        {
-                _createNewGroup();
-        }
-        else if(ui->stackedWidget->currentIndex() == 6)
-        {
-            QHash<QComboBox*,QString>::Iterator i;
-            for(i=_combos.begin();i!=_combos.end();++i)
-            {
-                int id = i.key()->model()->data(i.key()->model()->index(i.key()->currentIndex(),0)).toInt();
-                _divisas[i.value()] = id;
-            }
-
-            QHash<QComboBox*,QString>::Iterator it;
-            for(it=_combos2.begin();it!=_combos2.end();++it)
-            {
-                int id = it.key()->model()->data(it.key()->model()->index(it.key()->currentIndex(),0)).toInt();
-                _ivas[it.value()] = id;
-            }
-
-            QHash<QComboBox*,QString>::Iterator it2;
-            for(it2=_combos3.begin();it2!=_combos3.end();++it2)
-            {
-                int id = it2.key()->model()->data(it2.key()->model()->index(it2.key()->currentIndex(),0)).toInt();
-                _paises[it2.value()] = id;
-            }
-            qDebug() << _paises;
+        ui->btnImportar->setEnabled(false);
+        switch (ui->stackedWidget->currentIndex()) {
+        case 3:
+            _createNewGroup();
+            break;
+        case 4:
+        case 5:
             ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);
-            ui->btnImportar->setText("Importar");
             ui->btnImportar->setEnabled(true);
-        }
-        else
-        {
-            ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);            
+            break;
+        case 6:
+            _getRelations();
+            break;
+        default:
+            ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);
+            break;
         }
     }
     else
@@ -306,11 +318,16 @@ void importDialog::afterCreateGroup()
 
         QHBoxLayout * lay = new QHBoxLayout(this);
 
+        QCheckBox * check = new QCheckBox(this);
+        check->setChecked(true);
+
+        lay->addWidget(check);
         lay->addWidget(label);
         lay->addWidget(combo);
 
         _layout->addLayout(lay);
         _combos.insert(combo,codigo);
+        _validDivisas.insert(combo,check);
         combo->setCurrentIndex(0);
 
     }while(q.next());

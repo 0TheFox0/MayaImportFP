@@ -1138,3 +1138,12 @@ CREATE  TABLE IF NOT EXISTS `@empresa@`.`vales` (
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8
 COLLATE = utf8_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `@empresa@`.`series` (
+`id` INT NOT NULL AUTO_INCREMENT ,
+`serie` CHAR(2) NULL ,
+`comentarios` TEXT NULL ,
+PRIMARY KEY (`id`) )
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8
+COLLATE = utf8_unicode_ci;

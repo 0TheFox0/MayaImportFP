@@ -171,6 +171,7 @@ private:
 
     void _updateDivisas();
     QHash<QString,float> _cambioDivisa;
+    QHash<QString,bool> _series;
 };
 
 #endif // IMPORTTHREAD_H

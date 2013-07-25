@@ -4,6 +4,8 @@
 #include <QDialog>
 #include <QMessageBox>
 #include <QCloseEvent>
+#include <QTime>
+#include <QTimer>
 namespace Ui {
 class progressDialog;
 }
@@ -22,12 +24,14 @@ public slots:
     void end();
 private slots:
     void on_pushButton_clicked();
-
+    void updateTime();
 signals:
     void stop();
 private:
     Ui::progressDialog *ui;
     void closeEvent(QCloseEvent *e );
+    QTime t;
+    QTimer timer;
 };
 
 #endif // PROGRESSDIALOG_H

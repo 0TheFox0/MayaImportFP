@@ -5,7 +5,10 @@ progressDialog::progressDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::progressDialog)
 {
-    ui->setupUi(this);
+    ui->setupUi(this);   
+    connect(&timer,SIGNAL(timeout()),this,SLOT(updateTime()));
+    timer.start(1000);
+    t.start();
 }
 
 progressDialog::~progressDialog()
@@ -33,6 +36,7 @@ void progressDialog::sizeOfTask(int max)
 
 void progressDialog::end()
 {
+    timer.stop();
     ui->progressBar->setMaximum(1);
     ui->progressBar->setValue(1);
     ui->pushButton->setText(tr("Aceptar"));
@@ -54,6 +58,18 @@ void progressDialog::on_pushButton_clicked()
     }
     else
         this->hide();
+}
+
+void progressDialog::updateTime()
+{
+    int e = t.elapsed();
+    int sec = e/1000;
+    int hour = sec/3600;
+    int _min = sec%3600;
+    int min = _min / 60;
+    int secs = _min%60;
+    QString s = QString().sprintf("%02i:%02i:%02i",hour,min,secs);
+    ui->lblTime->setText(s);
 }
 
 

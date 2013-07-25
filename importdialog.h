@@ -4,6 +4,7 @@
 #include <QDialog>
 #include <QLabel>
 #include <QComboBox>
+#include <QCheckBox>
 #include <QFileDialog>
 #include <QDebug>
 #include <QMessageBox>
@@ -24,6 +25,7 @@ public:
     explicit importDialog(QWidget *parent = 0);
     ~importDialog();
 
+    void _getRelations();
 private slots:
     void on_btnSearchBD_clicked();
 
@@ -61,6 +63,7 @@ private:
     QSqlRecord _grupoMaya;
 
 
+    QHash<QComboBox*,QCheckBox*> _validDivisas;
     QHash<QComboBox*,QString> _combos;
     QHash<QComboBox*,QString> _combos2;
     QHash<QComboBox*,QString> _combos3;
