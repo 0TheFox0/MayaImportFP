@@ -3787,6 +3787,7 @@ void importThread::run()
 {
     _checkIva();
     _updateDivisas();
+    _readProvincias();
     if(!_hardStop && !_haveError){ _importFormPago(); }
     if(!_hardStop && !_haveError){ _importClients();  }
     if(!_hardStop && !_haveError){ _importProv();     }
