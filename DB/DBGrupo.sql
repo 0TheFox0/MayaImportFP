@@ -91,8 +91,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`articulos` (
   `margen_min` DOUBLE NULL DEFAULT NULL ,
   `coste_real` DOUBLE NULL DEFAULT NULL ,
   PRIMARY KEY (`id`) ,
-  UNIQUE INDEX `cCodigo_UNIQUE` (`codigo` ASC) ,
-  INDEX `fk_articulos_1_idx` (`id_tipos_iva` ASC) )
+  UNIQUE INDEX `cCodigo_UNIQUE` (`codigo` ASC) )
 ENGINE = InnoDB
 AUTO_INCREMENT = 1
 DEFAULT CHARACTER SET = utf8;
@@ -107,9 +106,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`articulos_prov_frec` (
   `descoferta` VARCHAR(45) NULL DEFAULT NULL ,
   `pvd_real` DOUBLE NULL DEFAULT NULL ,
   `id_divisa` INT(11) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_articulos_prov_frec_1_idx` (`id_articulo` ASC) ,
-  INDEX `fk_articulos_prov_frec_2_idx` (`id_proveedor` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 AUTO_INCREMENT = 1
 DEFAULT CHARACTER SET = utf8;
@@ -121,8 +118,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`avisos` (
   `aviso` TEXT NULL DEFAULT NULL ,
   `fecha_hora_aviso` DATETIME NULL DEFAULT NULL ,
   `completado` TINYINT(1) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_avisos_1_idx` (`id_tipoaviso` ASC) )
+  PRIMARY KEY (`id`)  )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -164,8 +160,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`cliente_direcciones` (
   `id_pais` INT(11) NULL DEFAULT NULL ,
   `id_cliente` INT(11) NULL DEFAULT NULL ,
   `direccion_envio` TINYINT(1) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_table1_1_idx` (`id_pais` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -239,8 +234,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`clientes` (
   `id_agente` INT(11) NULL ,
   `id_transportista` INT(11) NULL ,
   `grupo_iva` VARCHAR(45) NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_clientes_2_idx` (`id_idioma_documentos` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 AUTO_INCREMENT = 1
 DEFAULT CHARACTER SET = utf8
@@ -267,9 +261,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`clientes_deuda` (
   `importe_transferencia` DOUBLE NULL DEFAULT NULL ,
   `importe_internet` DOUBLE NULL DEFAULT NULL ,
   `id_cliente` INT(11) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_clientes_deuda_2_idx` (`id_ticket` ASC) ,
-  INDEX `fk_clientes_deuda_3_idx` (`id_factura` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8
 COLLATE = utf8_unicode_ci;
@@ -281,8 +273,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`clientes_entregas` (
   `importe` DOUBLE NULL DEFAULT '0' ,
   `concepto` INT(11) NULL DEFAULT '0' ,
   `disponible` DOUBLE NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_clientes_entregas_1_idx` (`id_cliente` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8
 COLLATE = utf8_unicode_ci;
@@ -517,8 +508,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`gruposart` (
   `grupo_art` VARCHAR(45) NULL DEFAULT NULL ,
   `image` BLOB NULL DEFAULT NULL ,
   `type` VARCHAR(4) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_gruposart_1_idx` (`id_subsubfamilia` ASC) )
+  PRIMARY KEY (`id`)  )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -541,8 +531,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`maestro_subfamilia_cliente` (
   `id` INT(11) NOT NULL AUTO_INCREMENT ,
   `descripcion` VARCHAR(45) NULL DEFAULT NULL ,
   `id_maestro_familia_cliente` INT(11) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_maestro_subfamilia_cliente_1_idx` (`id_maestro_familia_cliente` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -584,8 +573,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`paises` (
   `country_code` VARCHAR(45) CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NOT NULL ,
   PRIMARY KEY (`id`) ,
   UNIQUE INDEX `countryCode_UNIQUE` (`country_code` ASC) ,
-  UNIQUE INDEX `pais_UNIQUE` (`pais` ASC) ,
-  INDEX `fk_paises_1_monedas_id_idx` (`id_monedas` ASC) )
+  UNIQUE INDEX `pais_UNIQUE` (`pais` ASC) )
 ENGINE = InnoDB
 AUTO_INCREMENT = 1
 DEFAULT CHARACTER SET = utf8
@@ -616,8 +604,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`personascontactocliente` (
   `cargo_empresa` VARCHAR(45) CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NULL DEFAULT NULL ,
   `email` VARCHAR(150) CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NULL DEFAULT NULL ,
   PRIMARY KEY (`id`) ,
-  UNIQUE INDEX `id_UNIQUE` (`id` ASC) ,
-  INDEX `fk_Personascontactocliente_1_idx` (`id_cliente` ASC) )
+  UNIQUE INDEX `id_UNIQUE` (`id` ASC) )
 ENGINE = InnoDB
 AUTO_INCREMENT = 1
 DEFAULT CHARACTER SET = utf8
@@ -663,8 +650,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`proveedor_a_cuenta` (
   `concepto` VARCHAR(45) NULL DEFAULT NULL ,
   `id_proveedor` INT(11) NULL DEFAULT NULL ,
   `disponible` DOUBLE NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_proveedor_a_cuenta_1_idx` (`id_proveedor` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 AUTO_INCREMENT = 1
 DEFAULT CHARACTER SET = utf8;
@@ -755,8 +741,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`subfamilias` (
   `image` BLOB NULL DEFAULT NULL ,
   `type` VARCHAR(4) CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NULL DEFAULT NULL ,
   `codigo` VARCHAR(3) CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_subfamilias_subfamilias_idx` (`id_familia` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8
 COLLATE = utf8_unicode_ci;
@@ -767,8 +752,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`subsubfamilias` (
   `subsub_familia` VARCHAR(45) NULL DEFAULT NULL ,
   `im` BLOB NULL DEFAULT NULL ,
   `type` VARCHAR(4) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_subsubfamilias_subf_id_idx` (`id_subfamilia` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -779,13 +763,15 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`tarifas` (
   `id_monedas` INT(11) NULL DEFAULT NULL ,
   `margen` DECIMAL(9,2) NULL DEFAULT NULL ,
   `margen_minimo` DECIMAL(9,2) NULL DEFAULT NULL ,
+  `porc_dto1` DOUBLE NULL DEFAULT '0',
+  `porc_dto2` DOUBLE NULL DEFAULT '0',
+  `porc_dto3` DOUBLE NULL DEFAULT '0', 
+  `porc_dto4` DOUBLE NULL DEFAULT '0',
+  `porc_dto5` DOUBLE NULL DEFAULT '0',
+  `porc_dto6` DOUBLE NULL DEFAULT '0',
   `pvp` DECIMAL(9,2) NULL DEFAULT NULL ,
   `id_codigo_tarifa` INT(11) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_tarifas_1_articulos_id_idx` (`id_articulo` ASC) ,
-  INDEX `fk_tarifas_1_paises_id_idx` (`id_pais` ASC) ,
-  INDEX `fk_tarifas_1_moneda_id_idx` (`id_monedas` ASC) ,
-  INDEX `fk_tarifas_1_idx` (`id_codigo_tarifa` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 AUTO_INCREMENT = 1
 DEFAULT CHARACTER SET = utf8
@@ -832,8 +818,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`trazabilidad1` (
   `id_fac_pro` INT(11) NULL DEFAULT NULL ,
   `fac_pro` VARCHAR(45) NULL DEFAULT NULL ,
   `proveedor` VARCHAR(45) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_trazabilidad1_1_idx` (`id_articulo` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 
@@ -848,8 +833,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`trazabilidad2` (
   `fecha_venta` DATE NULL DEFAULT NULL ,
   `codigo_cuenta_cliente` VARCHAR(25) NULL DEFAULT NULL ,
   `cliente` VARCHAR(45) NULL DEFAULT NULL ,
-  PRIMARY KEY (`id`) ,
-  INDEX `fk_trazabilidad2_1_idx` (`id_trazabilidad1` ASC) )
+  PRIMARY KEY (`id`) )
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8;
 

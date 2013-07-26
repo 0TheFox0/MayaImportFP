@@ -109,6 +109,7 @@ private:
     int _getIdIva(QString cod);
     double _getRIva(QString cod);
     void _importFormPago();
+    void _readProvincias();
 
     void _importClients();
     void _importComenCli();
@@ -172,6 +173,7 @@ private:
     void _updateDivisas();
     QHash<QString,float> _cambioDivisa;
     QHash<QString,bool> _series;
+    QHash<QString,QString> _provincias;
 };
 
 #endif // IMPORTTHREAD_H

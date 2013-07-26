@@ -232,8 +232,8 @@ void importDialog::selectionChanged(QItemSelection, QItemSelection)
         _empDir.append(_empresaFp.value("CODEMP").toString().trimmed());
 
         _contaDir = ui->txtRutaConta->text();
-        _contaDir.append("/EMP");
-        _contaDir.append(_empresaFp.value("CODEMP").toString().trimmed());
+        //_contaDir.append("/EMP");
+        //_contaDir.append(_empresaFp.value("CODEMP").toString().trimmed());
     }
     else
     {

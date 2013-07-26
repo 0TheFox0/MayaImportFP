@@ -187,7 +187,7 @@ void importThread::_importClients()
         wq.bindValue(":cDireccion2","");
         wq.bindValue(":cCP",r.value("CPTLCLI").toString().trimmed());
         wq.bindValue(":cPoblacion",r.value("CPOBCLI").toString().trimmed().toUpper());
-        wq.bindValue(":cProvincia",r.value("CCODPROV").toString().trimmed()); // TODO hay que poner el nombre, no el código.
+        wq.bindValue(":cProvincia",_provincias.value(r.value("CCODPROV").toString().trimmed()));
         wq.bindValue(":idpais",_paisRelation.value(r.value("CNACCLI").toString().trimmed()));
         wq.bindValue(":cTelefono1",r.value("CTFO1CLI").toString().trimmed());
         wq.bindValue(":cTelefono2",r.value("CTFO2CLI").toString().trimmed());
@@ -336,7 +336,6 @@ void importThread::_importFormPago()
     rows = 0;
     q.first();    
 
-    QSqlQuery wq(QSqlDatabase::database("grupo"));
     do
     {
         if(_hardStop)
@@ -425,6 +424,50 @@ void importThread::_importFormPago()
     emit sizeOfTask(0);
     emit Progress(tr("Borrando datos temporales"),0);
     q.exec("DROP TABLE IF EXISTS d_Fpago");
+}
+
+void importThread::_readProvincias()
+{
+    emit Progress(tr("Abriendo Archivo: Formas de pago"),0);
+    emit sizeOfTask(0);
+    QString file = Path()+"/Provinc.dbf";
+    _mw->openDb(file);
+
+    QSqlQuery q(QSqlDatabase::database("dbfEditor"));
+    if(!q.exec("Select * from d_Provinc"))
+    {
+        emit Error(q.lastError().text());
+        return;
+    }
+    int rows = 0;
+    while(q.next())
+        rows++;
+    emit sizeOfTask(rows);
+
+    if(rows==0)
+        return;
+
+    rows = 0;
+    q.first();
+
+    do
+    {
+        if(_hardStop)
+            return;
+        if(_haveError)
+            return;
+
+        rows++;
+        QSqlRecord r = q.record();
+        QString ccod = r.value("CCODPROV").toString().trimmed();
+        QString desc = r.value("CNOMPROV").toString().trimmed();
+        QString prg = tr("Provincias: %1").arg(desc);
+        emit Progress(prg,rows);
+        _provincias.insert(ccod,desc);
+    }while(q.next());
+    emit sizeOfTask(0);
+    emit Progress(tr("Borrando datos temporales"),0);
+    q.exec("DROP TABLE IF EXISTS d_Provinc");
 }
 
 void importThread::_importProv()
@@ -541,7 +584,7 @@ void importThread::_importProv()
         wq.bindValue(":direccion1",r.value("CDIRPRO").toString().trimmed());
         wq.bindValue(":cp",r.value("CPTLPRO").toString().trimmed());
         wq.bindValue(":poblacion",r.value("CPOBPROV").toString().trimmed());
-        wq.bindValue(":provincia",r.value("CCODPROV").toString().trimmed());
+        wq.bindValue(":provincia",_provincias.value(r.value("CCODPROV").toString().trimmed()));
         wq.bindValue(":telefono1",r.value("CTFO1PRO").toString().trimmed());
         wq.bindValue(":telefono2",r.value("CTFO2PRO").toString().trimmed());
         wq.bindValue(":fax",r.value("CFAX").toString().trimmed());
@@ -877,11 +920,43 @@ void importThread::_generarCodigosTarifa()
 
     int row = 0;
     emit sizeOfTask(_divisas.size());
+    if(_divisas.contains("EUR"))
+    {
+        row++;
+
+        QString k = "EUR";
+        emit Progress(tr("Divisas: %1").arg(k),row);
+
+        QString des = QString("FacturaPlus_%1").arg(k);
+        QString cod = QString("F_%1").arg(k).toUpper();
+        cod.truncate(15);
+        wq.prepare("INSERT INTO codigotarifa "
+                   "(descripcion, codigo_tarifa, dto, desc_promo, cant_promo,"
+                   "cant_base, importe_dto, id_pais, id_monedas, margen, margen_min) VALUES "
+                   "(:desc, :codigo, 0, 0, 0, 0, 0, 0, :moneda, 0, 0);");
+
+        wq.bindValue(":desc",des);
+        wq.bindValue(":codigo",cod);
+        wq.bindValue(":moneda",_divisas.value("EUR"));
+
+        if(wq.exec())
+        {
+            _codTarifa.insert(k,wq.lastInsertId().toInt());
+
+        }
+        else
+        {
+            _haveError = true;
+            _error = wq.lastError().text();
+        }
+    }
     for(it = _divisas.begin();it!=_divisas.end();++it)
     {
         row++;
 
         QString k = it.key();
+        if(k == "EUR")
+            continue;
         emit Progress(tr("Divisas: %1").arg(k),row);
 
         QString des = QString("FacturaPlus_%1").arg(k);
@@ -946,7 +1021,6 @@ void importThread::_importArticulos()
     q.first();
 
     QSqlQuery wq(QSqlDatabase::database("grupo"));
-    QSqlQuery wq1(QSqlDatabase::database("grupo"));
     do
     {
         if(_hardStop)
@@ -1040,8 +1114,6 @@ void importThread::_importArticulos()
          "76:" QSqlField("NIVAANTER", double, length: 15, required: no, generated: yes, typeID: 8) "0"
          */
 
-
-
         wq.prepare(
          "INSERT INTO `articulos` "
          "(`codigo`, `codigo_barras`, `codigo_fabricante`, `descripcion`,"
@@ -1086,37 +1158,64 @@ void importThread::_importArticulos()
         {
             int art = wq.lastInsertId().toInt();
             _articulos.insert(r.value("CREF").toString().trimmed(),art);
-            QString CCodDiv = r.value("CCODDIV").toString().trimmed();
+            QString error;
             double pvp = r.value("NPVP").toDouble();
             double base = r.value("NCOSTEDIV").toDouble();
-            double margen = 100-(base/pvp);
+            double margen = (base * 100) / pvp;
+            double NDTO1 = r.value("NDTO1").toDouble();
+            double NDTO2 = r.value("NDTO2").toDouble();
+            double NDTO3 = r.value("NDTO3").toDouble();
+            double NDTO4 = r.value("NDTO4").toDouble();
+            double NDTO5 = r.value("NDTO5").toDouble();
+            double NDTO6 = r.value("NDTO6").toDouble();
             //double margen = pvp - base;
             QHash<QString,int>::Iterator it;
-            for(it=_codTarifa.begin();it!=_codTarifa.end();++it)
+            if(_codTarifa.contains("EUR"))
             {
-                wq1.prepare(
-                            "INSERT INTO `tarifas` "
-                            "(`id_articulo`, `id_pais`, `id_monedas`, `margen`,"
-                            "`margen_minimo`, `pvp`, `id_codigo_tarifa`)"
-                            "VALUES "
-                            "(:id_articulo, 1, :id_monedas, :margen, :margen_minimo, :pvp, :id_codigo_tarifa);"
-                            );
-                wq1.bindValue(":id_articulo",art);
-                wq1.bindValue(":id_monedas",_divisas.value(it.key()));
-                wq1.bindValue(":margen",margen);
-                wq1.bindValue(":margen_minimo",0);
-                wq1.bindValue(":pvp",pvp * _cambioDivisa.value(it.key()));
-                wq1.bindValue(":id_codigo_tarifa",_codTarifa.value(it.key()));
+                QHash<QString,QVariant> v;
+                v["id_articulo"]= art;
+                //v["id_pais"]= ;//
+                v["id_monedas"]= _divisas.value("EUR") ;
+                v["margen"]= margen;
+                v["margen_minimo"]= 0;
+                v["porc_dto1"]= NDTO1;
+                v["porc_dto2"]= NDTO2;
+                v["porc_dto3"]= NDTO3;
+                v["porc_dto4"]= NDTO4;
+                v["porc_dto5"]= NDTO5;
+                v["porc_dto6"]= NDTO6;
+                v["pvp"]= pvp * _cambioDivisa.value("EUR");
+                v["id_codigo_tarifa"]= _codTarifa.value("EUR");
 
-                if(!wq1.exec())
+                if(SqlInsert(v,"tarifas",QSqlDatabase::database("grupo"),error) < 0 )
                 {
                     _haveError = true;
-                    _error = wq1.lastError().text();
-                    qDebug() << wq1.boundValues();
-                    qDebug() << wq1.lastError().databaseText();
-                    qDebug() << wq1.lastQuery();
-                    qDebug() << wq1.lastError().text();
-                    qDebug() << wq1.executedQuery();
+                    _error = error;
+                }
+            }
+            for(it=_codTarifa.begin();it!=_codTarifa.end();++it)
+            {
+                if(it.key() == "EUR")
+                    continue;
+                QHash<QString,QVariant> v;
+                v["id_articulo"]= art;
+                //v["id_pais"]= ;//
+                v["id_monedas"]= _divisas.value(it.key()) ;
+                v["margen"]= margen;
+                v["margen_minimo"]= 0;
+                v["porc_dto1"]= NDTO1;
+                v["porc_dto2"]= NDTO2;
+                v["porc_dto3"]= NDTO3;
+                v["porc_dto4"]= NDTO4;
+                v["porc_dto5"]= NDTO5;
+                v["porc_dto6"]= NDTO6;
+                v["pvp"]= pvp * _cambioDivisa.value(it.key());
+                v["id_codigo_tarifa"]= _codTarifa.value(it.key());
+
+                if(SqlInsert(v,"tarifas",QSqlDatabase::database("grupo"),error) < 0 )
+                {
+                    _haveError = true;
+                    _error = error;
                 }
             }
         }
