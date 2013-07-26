@@ -1187,10 +1187,18 @@ void importThread::_importArticulos()
                 v["pvp"]= pvp * _cambioDivisa.value("EUR");
                 v["id_codigo_tarifa"]= _codTarifa.value("EUR");
 
-                if(SqlInsert(v,"tarifas",QSqlDatabase::database("grupo"),error) < 0 )
+                int id = SqlInsert(v,"tarifas",QSqlDatabase::database("grupo"),error);
+                if(id < 0 )
                 {
                     _haveError = true;
                     _error = error;
+                }
+                else
+                {
+                    QHash<QString,QVariant> v2;
+                    v2["id_tarifa_predeterminada"] = id;
+                    QString c = QString("nombre_bd = %1").arg(QSqlDatabase::database("empresa").databaseName());
+                    SqlUpdate(v2,"empresas",QSqlDatabase::database("grupo"),c,error);
                 }
             }
             for(it=_codTarifa.begin();it!=_codTarifa.end();++it)
