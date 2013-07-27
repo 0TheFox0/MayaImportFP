@@ -67,10 +67,12 @@ private:
     QHash<QComboBox*,QString> _combos;
     QHash<QComboBox*,QString> _combos2;
     QHash<QComboBox*,QString> _combos3;
+    QHash<QComboBox*,QString> _combosMonedaPais;
 
     QHash<QString,int> _divisas;
     QHash<QString,int> _ivas;
     QHash<QString,int> _paises;
+    QHash<QString,int> _MonedaPais;
 
     QString _empDir;
     QString _contaDir;

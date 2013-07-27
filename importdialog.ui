@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>471</width>
+    <width>562</width>
     <height>576</height>
    </rect>
   </property>
@@ -45,13 +45,6 @@
      </widget>
      <widget class="QWidget" name="page_4">
       <layout class="QGridLayout" name="gridLayout_4">
-       <item row="2" column="0" colspan="2">
-        <widget class="QLabel" name="label_21">
-         <property name="text">
-          <string>Indique la ruta de acceso a la base de datos de ContaPlus (carpeta CON2012)</string>
-         </property>
-        </widget>
-       </item>
        <item row="3" column="0" colspan="2">
         <widget class="QLineEdit" name="txtRutaConta"/>
        </item>
@@ -139,6 +132,13 @@
          </property>
          <property name="arrowType">
           <enum>Qt::NoArrow</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0" colspan="3">
+        <widget class="QLabel" name="label_21">
+         <property name="text">
+          <string>Indique la ruta de acceso a la base de datos de la empresa de contabilidad (carpeta EMPxx)</string>
          </property>
         </widget>
        </item>
@@ -383,8 +383,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>433</width>
-            <height>469</height>
+            <width>63</width>
+            <height>16</height>
            </rect>
           </property>
          </widget>
@@ -418,8 +418,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>433</width>
-            <height>469</height>
+            <width>63</width>
+            <height>16</height>
            </rect>
           </property>
          </widget>
@@ -453,8 +453,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>433</width>
-            <height>469</height>
+            <width>63</width>
+            <height>16</height>
            </rect>
           </property>
          </widget>

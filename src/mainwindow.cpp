@@ -82,9 +82,9 @@ MainWindow::MainWindow(QString dbfFileName)
     setWindowTitle(windowTitle);
 }
 
-void MainWindow::openDb(QString path)
+bool MainWindow::openDb(QString path)
 {
-    dbfEditor->openDb(path);
+    return dbfEditor->openDb(path);
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

@@ -205,6 +205,7 @@ CREATE  TABLE IF NOT EXISTS `@grupo@`.`clientes` (
   `dia_pago1` INT(11) NULL DEFAULT '0' ,
   `dia_pago2` INT(11) NULL DEFAULT '0' ,
   `tarifa_cliente` INT(11) NULL DEFAULT '0' ,
+  `tipo_dto_tarifa` DOUBLE NULL DEFAULT '0' ,
   `importe_a_cuenta` DOUBLE NULL DEFAULT '0' ,
   `vales` DOUBLE NULL DEFAULT '0' ,
   `entidad_bancaria` VARCHAR(4) CHARACTER SET 'utf8' COLLATE 'utf8_unicode_ci' NULL DEFAULT NULL ,

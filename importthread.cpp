@@ -27,7 +27,7 @@ void importThread::_importClients()
     emit Progress(tr("Abriendo Archivo: Clientes"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Clientes.dbf";
-     _mw->openDb(file);
+     if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("SELECT * FROM d_Clientes"))
@@ -164,7 +164,7 @@ void importThread::_importClients()
          "comentario_bloqueo, porc_dto_cliente, recargo_equivalencia, cuenta_contable, cuenta_iva_repercutido,"
          "cuenta_deudas, cuenta_cobros, id_forma_pago, dia_pago1, dia_pago2, tarifa_cliente, importe_a_cuenta,"
          "vales, entidad_bancaria, oficina_bancaria, dc, cuenta_corriente,"
-         "importe_pendiente,acceso_web,password_web,observaciones) "
+         "importe_pendiente,acceso_web,password_web,observaciones,tipo_dto_tarifa) "
          "VALUES "
          "(:cCodigoCliente, :cApellido1, :cApellido2, :cNombre, :cNombreFiscal, :cNombreComercial,"
          ":cPersonaContacto, :cCifNif, :cDireccion1, :cDireccion2, :cCP, :cPoblacion, :cProvincia,"
@@ -173,7 +173,7 @@ void importThread::_importClients()
          ":tComentarioBloqueo, :nPorcDtoCliente, :lRecargoEquivalencia, :cCuentaContable, :cCuentaIvaRepercutido,"
          ":cCuentaDeudas, :cCuentaCobros, :idFormaPago, :nDiapago1, :nDiaPago2, :nTarifaCliente, :rImporteACuenta,"
          ":rVales, :cCentidadBancaria, :cOficinaBancaria, :cDC, :cCuentaCorriente,"
-         ":rImportePendiente,:acceso_web,:password_web,:observaciones);" );
+         ":rImportePendiente,:acceso_web,:password_web,:observaciones,:tipo_dto_tarifa);" );
 
         wq.bindValue(":cCodigoCliente",r.value("CSUBCTA").toString().trimmed().toUpper());
         wq.bindValue(":cApellido1",apell1.trimmed().toUpper());
@@ -234,7 +234,7 @@ void importThread::_importClients()
         wq.bindValue(":rImportePendiente",0);
         wq.bindValue(":acceso_web",r.value("CSUBCTA").toString().trimmed().toUpper());
         wq.bindValue(":password_web",r.value("CDNICIF").toString().trimmed().toUpper());
-
+        wq.bindValue("tipo_dto_tarifa",r.value("NDTO").toInt());
         if(!wq.exec())
         {
             _haveError = true;
@@ -265,7 +265,7 @@ void importThread::_importComenCli()
     emit Progress(tr("Abriendo Archivo: Notas de clientes"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Clientec.dbf";
-     _mw->openDb(file);
+     if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("SELECT * FROM d_Clientec"))
@@ -317,7 +317,7 @@ void importThread::_importFormPago()
     emit Progress(tr("Abriendo Archivo: Formas de pago"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Fpago.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("Select * from d_Fpago"))
@@ -431,7 +431,7 @@ void importThread::_readProvincias()
     emit Progress(tr("Abriendo Archivo: Formas de pago"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Provinc.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("Select * from d_Provinc"))
@@ -460,7 +460,7 @@ void importThread::_readProvincias()
         rows++;
         QSqlRecord r = q.record();
         QString ccod = r.value("CCODPROV").toString().trimmed();
-        QString desc = r.value("CNOMPROV").toString().trimmed();
+        QString desc = r.value("CNOMPROV").toString().trimmed().toUpper();
         QString prg = tr("Provincias: %1").arg(desc);
         emit Progress(prg,rows);
         _provincias.insert(ccod,desc);
@@ -475,7 +475,7 @@ void importThread::_importProv()
     emit Progress(tr("Abriendo Archivo: Proveedores"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Proveedo.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("Select * from d_Proveedo"))
@@ -647,7 +647,7 @@ void importThread::_importComentProv()
     emit Progress(tr("Abriendo Archivo: Comentarios de proveedor"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Proveedc.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("Select * from d_Proveedc"))
@@ -699,7 +699,7 @@ void importThread::_importFamilias()
     emit Progress(tr("Abriendo Archivo: Familias"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Familias.dbf";
-     _mw->openDb(file);
+     if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("SELECT * FROM d_Familias"))
@@ -719,6 +719,14 @@ void importThread::_importFamilias()
     q.first();
 
     QSqlQuery wq(QSqlDatabase::database("grupo"));
+    wq.prepare("INSERT INTO `secciones` (`seccion`) VALUES ('Articulos sin seccion');");
+    if(wq.exec())
+        _seccion = wq.lastInsertId().toInt();
+    else
+    {
+        _haveError = true;
+        _error = wq.lastError().text();
+    }
 
     do
     {
@@ -734,9 +742,10 @@ void importThread::_importFamilias()
         QString cod = r.value("CCODFAM").toString().trimmed();
         QString fam = r.value("CNOMFAM").toString().trimmed();
 
-        wq.prepare("INSERT INTO familias (codigo, familia) VALUES (:cod, :fam);");
+        wq.prepare("INSERT INTO familias (codigo, familia , id_seccion) VALUES (:cod, :fam , :sec);");
         wq.bindValue(":cod",cod);
         wq.bindValue(":fam",fam);
+        wq.bindValue(":sec",_seccion);
 
         if(wq.exec())
             _fams[cod] = wq.lastInsertId().toInt();
@@ -749,6 +758,7 @@ void importThread::_importFamilias()
 
     }while(q.next());
 
+
     emit sizeOfTask(0);
     emit Progress(tr("Borrando datos temporales"),0);
     q.exec("DROP TABLE IF EXISTS d_Familias");
@@ -759,7 +769,7 @@ void importThread::_importComentArticulos1()
     emit Progress(tr("Abriendo Archivo: Comentarios de Articulos"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Artcom.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("Select * from d_Artcom"))
@@ -811,7 +821,7 @@ void importThread::_importComentArticulos2()
     emit Progress(tr("Abriendo Archivo: Comentarios de Articulos"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Articulc.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("Select * from d_Articulc"))
@@ -863,7 +873,7 @@ void importThread::_importStocks()
     emit Progress(tr("Abriendo Archivo: Stocks de Articulos"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Stocks.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("Select * from d_Stocks"))
@@ -933,16 +943,22 @@ void importThread::_generarCodigosTarifa()
         wq.prepare("INSERT INTO codigotarifa "
                    "(descripcion, codigo_tarifa, dto, desc_promo, cant_promo,"
                    "cant_base, importe_dto, id_pais, id_monedas, margen, margen_min) VALUES "
-                   "(:desc, :codigo, 0, 0, 0, 0, 0, 0, :moneda, 0, 0);");
+                   "(:desc, :codigo, 0, 0, 0,0, 0, :pais, :moneda, 0, 0);");
 
         wq.bindValue(":desc",des);
         wq.bindValue(":codigo",cod);
         wq.bindValue(":moneda",_divisas.value("EUR"));
+        wq.bindValue(":pais",_monedaPais.value("EUR"));
 
         if(wq.exec())
         {
-            _codTarifa.insert(k,wq.lastInsertId().toInt());
-
+            int id = wq.lastInsertId().toInt();
+            _codTarifa.insert(k,id);
+            QHash<QString,QVariant> v2;
+            QString error;
+            v2["id_tarifa_predeterminada"] = id;
+            QString c = QString("`nombre_bd` = '%1'").arg(QSqlDatabase::database("empresa").databaseName());
+            SqlUpdate(v2,"empresas",QSqlDatabase::database("grupo"),c,error);
         }
         else
         {
@@ -965,11 +981,12 @@ void importThread::_generarCodigosTarifa()
         wq.prepare("INSERT INTO codigotarifa "
                    "(descripcion, codigo_tarifa, dto, desc_promo, cant_promo,"
                    "cant_base, importe_dto, id_pais, id_monedas, margen, margen_min) VALUES "
-                   "(:desc, :codigo, 0, 0, 0, 0, 0, 0, :moneda, 0, 0);");
+                   "(:desc, :codigo, 0, 0, 0, 0, 0, :pais, :moneda, 0, 0);");
 
         wq.bindValue(":desc",des);
         wq.bindValue(":codigo",cod);
         wq.bindValue(":moneda",it.value());
+        wq.bindValue(":pais",_monedaPais.value(it.key()));
 
         if(wq.exec())
             _codTarifa.insert(k,wq.lastInsertId().toInt());
@@ -1001,7 +1018,7 @@ void importThread::_importArticulos()
     emit Progress(tr("Abriendo Archivo: Articulos"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Articulo.dbf";
-     _mw->openDb(file);
+     if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("SELECT * FROM d_Articulo"))
@@ -1193,13 +1210,6 @@ void importThread::_importArticulos()
                     _haveError = true;
                     _error = error;
                 }
-                else
-                {
-                    QHash<QString,QVariant> v2;
-                    v2["id_tarifa_predeterminada"] = id;
-                    QString c = QString("nombre_bd = %1").arg(QSqlDatabase::database("empresa").databaseName());
-                    SqlUpdate(v2,"empresas",QSqlDatabase::database("grupo"),c,error);
-                }
             }
             for(it=_codTarifa.begin();it!=_codTarifa.end();++it)
             {
@@ -1243,15 +1253,15 @@ void importThread::_importPresCli()
     emit Progress(tr("Abriendo Archivo: Cabecera de presupuestos"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Preclit.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     emit Progress(tr("Abriendo Archivo: Lineas de presupuestos"),0);
     QString file2 = Path()+"/Preclil.dbf";
-    _mw->openDb(file2);
+    if(!_mw->openDb(file2)){_haveError = true;_error = "Error al abrir "+file2; return;}
 
     emit Progress(tr("Abriendo Archivo: Comentarios de presupuestos"),0);
     QString file3 = Path()+"/Preclic.dbf";
-    _mw->openDb(file3);
+    if(!_mw->openDb(file3)){_haveError = true;_error = "Error al abrir "+file3; return;}
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPres;
@@ -1577,15 +1587,15 @@ void importThread::_importPedCli()
     emit Progress(tr("Abriendo Archivo: Cabecera de pedidos"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Pedclit.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     emit Progress(tr("Abriendo Archivo: Lineas de pedidos"),0);
     QString file2 = Path()+"/Pedclil.dbf";
-    _mw->openDb(file2);
+    if(!_mw->openDb(file2)){_haveError = true;_error = "Error al abrir "+file2; return;}
 
     emit Progress(tr("Abriendo Archivo: Comentarios de pedidos"),0);
     QString file3 = Path()+"/Pedclic.dbf";
-    _mw->openDb(file3);
+    if(!_mw->openDb(file3)){_haveError = true;_error = "Error al abrir "+file3; return;}
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
@@ -1954,15 +1964,15 @@ void importThread::_importAlbCli()
     emit Progress(tr("Abriendo Archivo: Cabecera de albaranes"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Albclit.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     emit Progress(tr("Abriendo Archivo: Lineas de albaranes"),0);
     QString file2 = Path()+"/Albclil.dbf";
-    _mw->openDb(file2);
+    if(!_mw->openDb(file2)){_haveError = true;_error = "Error al abrir "+file2; return;}
 
     emit Progress(tr("Abriendo Archivo: Comnetarios de albaranes"),0);
     QString file3 = Path()+"/Albclic.dbf";
-    _mw->openDb(file3);
+    if(!_mw->openDb(file3)){_haveError = true;_error = "Error al abrir "+file3; return;}
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
@@ -2323,15 +2333,15 @@ void importThread::_importFacCli()
     emit Progress(tr("Abriendo Archivo: Cabecera de facturas"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Facclit.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     emit Progress(tr("Abriendo Archivo: Lineas de facturas"),0);
     QString file2 = Path()+"/Facclil.dbf";
-    _mw->openDb(file2);
+    if(!_mw->openDb(file2)){_haveError = true;_error = "Error al abrir "+file2; return;}
 
     emit Progress(tr("Abriendo Archivo: Comnetarios de facturas"),0);
     QString file3 = Path()+"/Facclic.dbf";
-    _mw->openDb(file3);
+    if(!_mw->openDb(file3)){_haveError = true;_error = "Error al abrir "+file3; return;}
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
@@ -2725,15 +2735,15 @@ void importThread::_importPedPro()
     emit Progress(tr("Abriendo Archivo: Cabecera de pedidos a proveedores"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Pedprot.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     emit Progress(tr("Abriendo Archivo: Lineas de pedidos a proveedores"),0);
     QString file2 = Path()+"/Pedprol.dbf";
-    _mw->openDb(file2);
+    if(!_mw->openDb(file2)){_haveError = true;_error = "Error al abrir "+file2; return;}
 
     emit Progress(tr("Abriendo Archivo: Comnetarios de pedidos a proveedores"),0);
     QString file3 = Path()+"/Pedproc.dbf";
-    _mw->openDb(file3);
+    if(!_mw->openDb(file3)){_haveError = true;_error = "Error al abrir "+file3; return;}
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
@@ -3027,15 +3037,15 @@ void importThread::_importAlbPro()
     emit Progress(tr("Abriendo Archivo: Cabecera de albaranes de proveedores"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Albprot.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     emit Progress(tr("Abriendo Archivo: Lineas de albaranes de proveedores"),0);
     QString file2 = Path()+"/Albprol.dbf";
-    _mw->openDb(file2);
+    if(!_mw->openDb(file2)){_haveError = true;_error = "Error al abrir "+file2; return;}
 
     emit Progress(tr("Abriendo Archivo: Comnetarios de albaranes de proveedores"),0);
     QString file3 = Path()+"/Albproc.dbf";
-    _mw->openDb(file3);
+    if(!_mw->openDb(file3)){_haveError = true;_error = "Error al abrir "+file3; return;}
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
@@ -3325,15 +3335,15 @@ void importThread::_importFacPro()
     emit Progress(tr("Abriendo Archivo: Cabecera de facturas de proveedores"),0);
     emit sizeOfTask(0);
     QString file = Path()+"/Facprot.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     emit Progress(tr("Abriendo Archivo: Lineas de facturas de proveedores"),0);
     QString file2 = Path()+"/Facprol.dbf";
-    _mw->openDb(file2);
+    if(!_mw->openDb(file2)){_haveError = true;_error = "Error al abrir "+file2; return;}
 
     emit Progress(tr("Abriendo Archivo: Comnetarios de facturas de proveedores"),0);
     QString file3 = Path()+"/Facproc.dbf";
-    _mw->openDb(file3);
+    if(!_mw->openDb(file3)){_haveError = true;_error = "Error al abrir "+file3; return;}
 
     QSqlQuery coment(QSqlDatabase::database("dbfEditor"));
     QHash<QString,QString> comenPed;
@@ -3647,7 +3657,7 @@ void importThread::_importPlan()
     emit Progress(tr("Abriendo Archivo: Plan general"),0);
     emit sizeOfTask(0);
     QString file = PathConta()+"/SubCta.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("SELECT * FROM d_SubCta"))
@@ -3720,7 +3730,7 @@ void importThread::_importDiario()
     emit Progress(tr("Abriendo Archivo: Diario"),0);
     emit sizeOfTask(0);
     QString file = PathConta()+"/Diario.dbf";
-    _mw->openDb(file);
+    if(!_mw->openDb(file)){_haveError = true;_error = "Error al abrir "+file; return;}
 
     QSqlQuery q(QSqlDatabase::database("dbfEditor"));
     if(!q.exec("SELECT * FROM d_Diario"))
@@ -4122,4 +4132,14 @@ void importThread::_updateDivisas()
             _cambioDivisa.insert(it.key(),value);
         }
     }
+}
+
+QHash<QString, int> importThread::monedaPais() const
+{
+    return _monedaPais;
+}
+
+void importThread::setMonedaPais(const QHash<QString, int> &monedaPais)
+{
+    _monedaPais = monedaPais;
 }

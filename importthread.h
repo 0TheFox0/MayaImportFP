@@ -56,6 +56,9 @@ public:
     QHash<QString, int> paisRelation() const;
     void setPaisRelation(const QHash<QString, int> &paisRelation);
 
+    QHash<QString, int> monedaPais() const;
+    void setMonedaPais(const QHash<QString, int> &monedaPais);
+
 signals:
     
     void importClientesChanged(bool arg);
@@ -145,9 +148,11 @@ private:
     QHash<QString,double> _stockArticulos;
 
     QHash<QString,int> _fams;
+    int _seccion;
     QHash<QString,QSqlRecord> _ivas;
     QHash<QString,int> _ivaRelation;
     QHash<QString,int> _paisRelation;
+    QHash<QString,int> _monedaPais;
     QHash<QString,int> _divisas;
     QHash<QString,int> _codTarifa;
     QHash<QString,QString> _pedidoFromAlb;

@@ -876,7 +876,7 @@ void QDbfEditor::deleteRecord()
         emit modelIsEmpty(false);
 }
 
-void QDbfEditor::openDbfFile()
+bool QDbfEditor::openDbfFile()
 {
     /*
     DBF File Header
@@ -980,8 +980,8 @@ void QDbfEditor::openDbfFile()
     file.setFileName(dbfFileName);
     if (!file.open(QIODevice::ReadOnly))
         {
-            QMessageBox::critical(this, tr("Error"), tr("DBF open error"));
-            return;
+//            QMessageBox::critical(this, tr("Error"), tr("DBF open error"));
+            return false;
         }
 
     sizesHeader.clear();
@@ -1054,7 +1054,7 @@ void QDbfEditor::openDbfFile()
     if (getData.lastError().isValid())
         {
             //QMessageBox::critical(this, tr("Error"), getData.lastError().text());
-            return;
+            return false;
         }
 
     QString tempValue;
@@ -1121,7 +1121,7 @@ void QDbfEditor::openDbfFile()
         qDebug() << getData.lastError().text();
         qDebug() << getData.lastQuery();
 
-            return;
+            return false;
         }
 
     quint32 q;
@@ -1207,8 +1207,8 @@ void QDbfEditor::openDbfFile()
             getData.exec();
             if (getData.lastError().isValid())
                 {
-                    QMessageBox::critical(this, tr("Error"), getData.lastError().text());
-                    return;
+                   // QMessageBox::critical(this, tr("Error"), getData.lastError().text());
+                    return false;
                 }
         }
 
@@ -1220,7 +1220,7 @@ void QDbfEditor::openDbfFile()
     if (getData.lastError().isValid())
         {
             //QMessageBox::critical(this, tr("Error"), getData.lastError().text());
-            return;
+            return false;
         }
 
     query = "CREATE TABLE ";
@@ -1238,7 +1238,7 @@ void QDbfEditor::openDbfFile()
     if (getData.lastError().isValid())
         {
             //QMessageBox::critical(this, tr("Error"), getData.lastError().text());
-            return;
+            return false;
         }
 
     for (i=0; i<fieldsCollection.count(); i++)
@@ -1262,12 +1262,13 @@ void QDbfEditor::openDbfFile()
             if (getData.lastError().isValid())
                 {
                     //QMessageBox::critical(this, tr("Error"), getData.lastError().text());
-                    return;
+                    return false;
                 }
         }
 
     file.close();
     fieldsCollection.clear();
+    return true;
 }
 
 void QDbfEditor::saveDbfFile()
@@ -2205,10 +2206,10 @@ void QDbfEditor::setToolButtonIconSize(int i)
     quitButton->setIconSize(size);
 }
 
-void QDbfEditor::openDb(QString path)
+bool QDbfEditor::openDb(QString path)
 {
     dbfFileName = path;
-    openDbfFile();
+    return openDbfFile();
 }
 
 QDbfEditor::~QDbfEditor()

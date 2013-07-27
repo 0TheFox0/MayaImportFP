@@ -53,7 +53,7 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QString dbfFileName);
-    void openDb(QString path);
+    bool openDb(QString path);
 protected:
     void closeEvent(QCloseEvent *event);
 

@@ -70,9 +70,9 @@ public slots:
     void refresh(int);
     void sortDbf(const QModelIndex&);
     void setToolButtonIconSize(int);
-    void openDb(QString path);
+    bool openDb(QString path);
 private slots:
-    void openDbfFile();
+    bool openDbfFile();
     void editRecord();
     void insertRecord();
     void deleteRecord();

@@ -125,6 +125,7 @@ bool SqlUpdate(QHash<QString,QVariant> values, QString table, QSqlDatabase datab
         error = q.lastError().text();
         qDebug() <<  colums;
         qDebug() << q.boundValues();
+        qDebug() << error;
     }
     return b;
 }

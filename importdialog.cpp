@@ -75,7 +75,13 @@ void importDialog::_getRelations()
         int id = it2.key()->model()->data(it2.key()->model()->index(it2.key()->currentIndex(),0)).toInt();
         _paises[it2.value()] = id;
     }
-    qDebug() << _paises;
+
+    QHash<QComboBox*,QString>::Iterator it3;
+    for(it3=_combosMonedaPais.begin();it3!=_combosMonedaPais.end();++it3)
+    {
+        int id = it3.key()->model()->data(it3.key()->model()->index(it3.key()->currentIndex(),0)).toInt();
+        _MonedaPais[it3.value()] = id;
+    }
     ui->stackedWidget->setCurrentIndex(ui->stackedWidget->currentIndex()+1);
     ui->btnImportar->setText("Importar");
     ui->btnImportar->setEnabled(true);
@@ -114,6 +120,7 @@ void importDialog::on_btnImportar_clicked()
 
         Thread->setIvaRelation(_ivas);
         Thread->setPaisRelation(_paises);
+        Thread->setMonedaPais(_MonedaPais);
 
         connect(Thread,SIGNAL(finished()),Thread,SLOT(deleteLater()));
         connect(Thread,SIGNAL(finished()),this,SLOT(reEnableImportar()));
@@ -299,8 +306,11 @@ void importDialog::afterCreateGroup()
     }
     q.first();
 
-    QSqlQueryModel * q1 = new QSqlQueryModel(this);
-    q1->setQuery("SELECT * FROM monedas;",QSqlDatabase::database("grupo"));
+    QSqlQueryModel * modelMoneda = new QSqlQueryModel(this);
+    modelMoneda->setQuery("SELECT * FROM monedas;",QSqlDatabase::database("grupo"));
+
+    QSqlQueryModel * modelPais = new QSqlQueryModel(this);
+    modelPais->setQuery("SELECT * FROM paises;",QSqlDatabase::database("grupo"));
 
     QWidget* container = new QWidget(this);
     QVBoxLayout * _layout = new QVBoxLayout(container);
@@ -311,8 +321,12 @@ void importDialog::afterCreateGroup()
         QString desc = r.value("CDETDIV").toString().trimmed();
 
         QComboBox * combo = new QComboBox(this);
-        combo->setModel(q1);
+        combo->setModel(modelMoneda);
         combo->setModelColumn(1);
+
+        QComboBox * combo2 = new QComboBox(this);
+        combo2->setModel(modelPais);
+        combo2->setModelColumn(1);
 
         QLabel * label = new QLabel(desc,this);
 
@@ -324,9 +338,11 @@ void importDialog::afterCreateGroup()
         lay->addWidget(check);
         lay->addWidget(label);
         lay->addWidget(combo);
+        lay->addWidget(combo2);
 
         _layout->addLayout(lay);
         _combos.insert(combo,codigo);
+        _combosMonedaPais.insert(combo2,codigo);
         _validDivisas.insert(combo,check);
         combo->setCurrentIndex(0);
 
@@ -382,9 +398,6 @@ void importDialog::afterCreateGroup()
     }
     q.first();
 
-    QSqlQueryModel * q3 = new QSqlQueryModel(this);
-    q3->setQuery("SELECT * FROM paises;",QSqlDatabase::database("grupo"));
-
     QWidget* container3 = new QWidget(this);
     QVBoxLayout * _layout3 = new QVBoxLayout(container);
     do
@@ -394,7 +407,7 @@ void importDialog::afterCreateGroup()
         QString desc = r.value("CNOMBRE").toString().trimmed();
 
         QComboBox * combo = new QComboBox(this);
-        combo->setModel(q3);
+        combo->setModel(modelPais);
         combo->setModelColumn(1);
 
         QLabel * label = new QLabel(desc,this);
