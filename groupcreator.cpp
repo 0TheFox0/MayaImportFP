@@ -45,7 +45,7 @@ void GroupCreator::run()
 
             _insertNivelAcesso(error, q);
 
-            _insertPoblaciones(error,q);
+          //  _insertPoblaciones(error,q);
 
             _insertAdminUser(error, q);
 
@@ -240,6 +240,7 @@ void GroupCreator::_createEmpresa()
         QString n_empresa = _empresaFp.value("CNOMBRE").toString().trimmed();
         n_empresa = n_empresa.remove(QRegExp(QString::fromUtf8("[-`~!@#$%^&*()_—+=|:;<>«»,.?/{}\'\"\\\[\\\]\\\\]")));
         n_empresa = n_empresa.remove(QRegExp("[^a-zA-Z0-9\\d\\s]"));
+        n_empresa = n_empresa.replace(" ","");
 
         if(n_empresa.isEmpty())//Raro pero no se sabe
         {
@@ -325,11 +326,17 @@ void GroupCreator::_createEmpresa()
             v["cp"]=_empresaFp.value("CCODPOS").toString().trimmed();
             v["poblacion"]=_empresaFp.value("CPOBLACION").toString().trimmed();
             v["provincia"]=_empresaFp.value("CPROVINCIA").toString().trimmed();
-            v["pais"]=QString::fromUtf8("ESPAÑA");
+            v["pais"]= QString::fromUtf8("ESPAÑA");
             v["telefono1"]=_empresaFp.value("CTLF").toString().trimmed();
             v["fax"]=_empresaFp.value("CFAX").toString().trimmed();
             v["mail"]=_empresaFp.value("CEMAIL").toString().trimmed();
             v["cif"]=_empresaFp.value("CNIF").toString().trimmed();
+            v["ejercicio"] = 2013;
+            v["contabilidad"] = 1;
+            v["medica"]=0;
+            v["internacional"]=1;
+            v["id_tarifa_predeterminada"]=1;
+            v["id_divisa"]=1;
 
             //if(!q2.exec())
             QString error;
@@ -340,7 +347,7 @@ void GroupCreator::_createEmpresa()
             if(SqlInsert(v,table,QSqlDatabase::database("grupo"),error)<0)
             {
                 qDebug() << error;
-                emit Error(q.lastError().text());
+                emit Error(error);
             }
             else
             {

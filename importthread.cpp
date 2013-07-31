@@ -578,7 +578,7 @@ void importThread::_importProv()
         ":entregado_a_cuenta, :id_pais, :id_monedas )"
                     );
 
-        wq.bindValue(":codigo",r.value("CCODPRO").toString().trimmed());
+        wq.bindValue(":codigo",r.value("CSUBCTA").toString().trimmed());
         wq.bindValue(":proveedor",r.value("CNOMPRO").toString().trimmed());
         wq.bindValue(":cif",r.value("CNIFDNI").toString().trimmed());
         wq.bindValue(":direccion1",r.value("CDIRPRO").toString().trimmed());
@@ -1191,7 +1191,7 @@ void importThread::_importArticulos()
             {
                 QHash<QString,QVariant> v;
                 v["id_articulo"]= art;
-                //v["id_pais"]= ;//
+                v["id_pais"]= _monedaPais.value("EUR");
                 v["id_monedas"]= _divisas.value("EUR") ;
                 v["margen"]= margen;
                 v["margen_minimo"]= 0;
@@ -1217,7 +1217,7 @@ void importThread::_importArticulos()
                     continue;
                 QHash<QString,QVariant> v;
                 v["id_articulo"]= art;
-                //v["id_pais"]= ;//
+                v["id_pais"]= _monedaPais.value(it.key());
                 v["id_monedas"]= _divisas.value(it.key()) ;
                 v["margen"]= margen;
                 v["margen_minimo"]= 0;

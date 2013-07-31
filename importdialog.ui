@@ -24,7 +24,7 @@
        <item>
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Bienvenido y todo ese rollo</string>
+          <string>Bienvenido</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignCenter</set>
@@ -383,8 +383,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>63</width>
-            <height>16</height>
+            <width>524</width>
+            <height>469</height>
            </rect>
           </property>
          </widget>
@@ -418,8 +418,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>63</width>
-            <height>16</height>
+            <width>524</width>
+            <height>469</height>
            </rect>
           </property>
          </widget>
@@ -453,8 +453,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>63</width>
-            <height>16</height>
+            <width>524</width>
+            <height>469</height>
            </rect>
           </property>
          </widget>
@@ -467,8 +467,7 @@
        <item>
         <widget class="QLabel" name="label_20">
          <property name="text">
-          <string>Puede comenzar con la importación. 
-Esto va a tardar de cojones...</string>
+          <string>Puede comenzar con la importación.</string>
          </property>
         </widget>
        </item>
