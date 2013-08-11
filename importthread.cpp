@@ -901,7 +901,8 @@ void importThread::_importStocks()
 
         rows++;
         QSqlRecord r = q.record();
-        double stck = r.value("NSTOCKS").toDouble();
+        qDebug() << r;
+        double stck = r.value("NSTOCK").toDouble();
         QString codigo = r.value("CREF").toString().trimmed();
         emit Progress("Stocks de articulos",rows);
 
@@ -1135,12 +1136,12 @@ void importThread::_importArticulos()
          "INSERT INTO `articulos` "
          "(`codigo`, `codigo_barras`, `codigo_fabricante`, `descripcion`,"
          "`descripcion_reducida`, `id_proveedor`, `id_familia`, `tipo_iva`,"
-         "`coste`, `comentario`, `stock_maximo`, `stock_minimo`, `stock_real`,"
+         "`coste`, `comentario`, `stock_maximo`, `stock_minimo`, `stock_real`,`stock_fisico_almacen`"
                     "`tipo_unidad`, `controlar_stock`, `pvp_incluye_iva`, `etiquetas`, `id_tipos_iva`, `coste_real`)"
          "VALUES "
          "(:codigo, :codigo_barras, :codigo_fabricante, :descripcion,"
          ":descripcion_reducida, :id_proveedor, :id_familia, :tipo_iva,"
-         ":coste, :comentario, :stock_maximo, :stock_minimo, :stock_real,"
+         ":coste, :comentario, :stock_maximo, :stock_minimo, :stock_real,:stock_fisico_almacen,"
          ":tipo_unidad, :controlar_stock, :pvp_incluye_iva, :etiquetas, :id_tipos_iva,:coste_real);"
                     );
 
@@ -1159,6 +1160,7 @@ void importThread::_importArticulos()
         wq.bindValue(":stock_maximo",r.value("NSTOCKMAX").toString().trimmed());
         wq.bindValue(":stock_minimo",r.value("NSTOCKMIN").toString().trimmed());
         wq.bindValue(":stock_real",_stockArticulos.value(ref));
+        wq.bindValue(":stock_fisico_almacen",_stockArticulos.value(ref));
         wq.bindValue(":tipo_unidad",r.value("CFORMATO").toString().trimmed());
         wq.bindValue(":controlar_stock",r.value("LCTRLSTOCK").toUInt());
         wq.bindValue(":pvp_incluye_iva",0);
@@ -3799,9 +3801,10 @@ void importThread::run()
     _updateDivisas();
     _readProvincias();
     if(!_hardStop && !_haveError){ _importFormPago(); }
+    if(!_hardStop && !_haveError){ _importArticulos();}
     if(!_hardStop && !_haveError){ _importClients();  }
     if(!_hardStop && !_haveError){ _importProv();     }
-    if(!_hardStop && !_haveError){ _importArticulos();}
+
 
     if(!_hardStop && !_haveError){ _importPresCli();  }
     if(!_hardStop && !_haveError){ _importPedCli();   }
